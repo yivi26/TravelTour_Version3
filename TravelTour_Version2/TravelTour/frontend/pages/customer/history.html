@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lịch sử đặt tour - TravelTour</title>
+    <link rel="stylesheet" href="../../assets/css/style.css" />
+    <link rel="stylesheet" href="../../assets/css/customer/customer.css" />
+    <link rel="stylesheet" href="../../assets/css/customer/customer-site-nav.css" />
+    <link rel="stylesheet" href="../../assets/css/customer/history.css" />
+  </head>
+  <body>
+    <script src="../../assets/js/customer/mount-customer-navbar.js"></script>
+    <div class="dashboard">
+      <div class="dashboard-body">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+          <nav class="sidebar-menu">
+            <a href="customer.html" class="menu-item">
+              <span class="menu-icon">👤</span>
+              <span>Thông tin cá nhân</span>
+            </a>
+
+            <a href="history.html" class="menu-item active">
+              <span class="menu-icon">🕘</span>
+              <span>Lịch sử đặt tour</span>
+            </a>
+
+            <a href="booking.html" class="menu-item">
+              <span class="menu-icon">📅</span>
+              <span>Booking của tôi</span>
+            </a>
+
+            <a href="changepass.html" class="menu-item">
+              <span class="menu-icon">🔒</span>
+              <span>Đổi mật khẩu</span>
+            </a>
+
+            <button class="menu-item logout-btn" type="button">
+              <span class="menu-icon">🚪</span>
+              <span>Đăng xuất</span>
+            </button>
+          </nav>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+          <div class="page-container history-page-container">
+            <!-- Page Header -->
+            <section class="page-header">
+              <h1>Lịch sử đặt tour</h1>
+              <p>Danh sách tất cả các tour bạn đã đặt</p>
+            </section>
+
+            <!-- Filter Section -->
+            <section class="card filter-card">
+              <div class="filter-row">
+                <select id="statusFilter" class="filter-control">
+                  <option value="all">Tất cả trạng thái</option>
+                  <option value="Đã xác nhận">Đã xác nhận</option>
+                  <option value="Thanh toán đang chờ xử lý">Thanh toán đang chờ xử lý</option>
+                  <option value="Hoàn thành">Hoàn thành</option>
+                  <option value="Đã hủy">Đã hủy</option>
+                </select>
+
+                <input
+                  id="searchInput"
+                  type="text"
+                  class="filter-control search-control"
+                  placeholder="Tìm kiếm tour..."
+                />
+              </div>
+            </section>
+
+            <!-- Booking List -->
+            <section>
+              <div id="historyList" class="history-list"></div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+    <div id="cancelModal" class="cancel-modal">
+      <div class="cancel-modal__overlay" data-cancel-close></div>
+
+      <div class="cancel-modal__box">
+        <h2>Hủy tour</h2>
+        <p>Vui lòng chọn lý do hủy tour</p>
+
+        <ul class="cancel-reason-list" id="cancelReasonList">
+          <li>
+            <label class="cancel-reason-option">
+              <input type="radio" name="cancelReason" value="Thay đổi kế hoạch" />
+              <span>Thay đổi kế hoạch</span>
+            </label>
+          </li>
+          <li>
+            <label class="cancel-reason-option">
+              <input type="radio" name="cancelReason" value="Không còn nhu cầu đi tour" />
+              <span>Không còn nhu cầu đi tour</span>
+            </label>
+          </li>
+          <li>
+            <label class="cancel-reason-option">
+              <input
+                type="radio"
+                name="cancelReason"
+                value="Thông tin tour không phù hợp"
+              />
+              <span>Thông tin tour không phù hợp</span>
+            </label>
+          </li>
+          <li>
+            <label class="cancel-reason-option">
+              <input type="radio" name="cancelReason" value="Muốn đổi sang tour khác" />
+              <span>Muốn đổi sang tour khác</span>
+            </label>
+          </li>
+          <li>
+            <label class="cancel-reason-option">
+              <input type="radio" name="cancelReason" value="Lý do cá nhân" />
+              <span>Lý do cá nhân</span>
+            </label>
+          </li>
+          <li>
+            <label class="cancel-reason-option">
+              <input type="radio" name="cancelReason" value="Khác" />
+              <span>Khác</span>
+            </label>
+          </li>
+        </ul>
+
+        <textarea
+          id="cancelReasonDetail"
+          class="cancel-modal__textarea cancel-modal__textarea--detail"
+          placeholder="Mô tả rõ hơn lý do hủy..."
+          hidden
+        ></textarea>
+
+        <div class="cancel-modal__actions">
+          <button
+            type="button"
+            class="cancel-modal__btn cancel-modal__btn--ghost"
+            data-cancel-close
+          >
+            Đóng
+          </button>
+
+          <button
+            type="button"
+            id="confirmCancelBtn"
+            class="cancel-modal__btn cancel-modal__btn--danger"
+          >
+            Xác nhận hủy
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="confirmCancelModal" class="confirm-cancel-modal">
+      <div class="modal-content cancel-policy-modal">
+        <h3>Quy định hủy tour</h3>
+        <ul class="cancel-policy-rules">
+          <li>
+            Hủy trong vòng <strong>60 phút</strong> kể từ lúc đặt tour:
+            <strong>không mất phí</strong>.
+          </li>
+          <li>
+            Hủy từ sau 60 phút đến <strong>24 giờ</strong> kể từ lúc đặt: mất
+            <strong>15%</strong> trên tổng giá trị tour.
+          </li>
+          <li>
+            Sau <strong>24 giờ</strong> kể từ lúc đặt tour:
+            <strong>không được hủy</strong>.
+          </li>
+        </ul>
+        <p id="cancelPolicyApply" class="cancel-policy-apply"></p>
+
+        <div class="modal-actions">
+          <button type="button" id="cancelConfirmCancel" class="btn-cancel">
+            Đóng
+          </button>
+          <button type="button" id="confirmCancelFinal" class="btn-confirm">
+            Đồng ý hủy
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="modal" id="logoutModal">
+      <div class="modal-content">
+        <h3>Bạn có muốn đăng xuất không?</h3>
+
+        <div class="modal-actions">
+          <button class="btn-cancel" id="cancelLogout">Hủy</button>
+          <button class="btn-confirm" id="confirmLogout">Đăng xuất</button>
+        </div>
+      </div>
+    </div>
+    <div id="officeModal" class="confirm-cancel-modal">
+      <div class="modal-content">
+        <h3>Thanh toán tại văn phòng</h3>
+        <p id="officeBookingCode" class="office-booking-code"></p>
+        <p>📍 120 Hoàng Minh Thảo, Đà Nẵng</p>
+        <p>📞 1900 1234</p>
+        <p>⏰ 8h - 20h mỗi ngày</p>
+        <p>Mang theo mã booking khi đến nhé!</p>
+        <div class="modal-actions">
+          <button type="button" id="closeOfficeModal" class="btn-confirm">
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="messageModal" class="confirm-cancel-modal">
+      <div class="modal-content">
+        <h3>Không thể hủy tour</h3>
+        <p id="messageModalText"></p>
+
+        <div class="modal-actions">
+          <button type="button" id="messageModalOk" class="btn-confirm">
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+    <script src="../../assets/js/auth/account-lock-fetch.js"></script>
+    <script src="../../assets/js/auth/navbar-avatar.js"></script>
+    <script src="../../assets/js/auth/public-navbar-auth.js"></script>
+    <script src="../../assets/js/customer/customerTopbarSync.js"></script>
+    <script src="../../assets/js/customer/history.js"></script>
+  </body>
+</html>

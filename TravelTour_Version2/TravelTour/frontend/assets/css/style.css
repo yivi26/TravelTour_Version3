@@ -1,0 +1,1259 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -webkit-body;
+}
+
+:root {
+  --primary: #1dbf73;
+  --primary-dark: #169c5e;
+  --bg-light: #f5faf7;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --white: #ffffff;
+  --border: #e5e7eb;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --radius: 20px;
+  --listing-card-image-height: 280px;
+  --listing-card-body-min-height: 268px;
+}
+
+body {
+  font-family: "Be Vietnam Pro", Arial, sans-serif;
+  color: var(--text);
+  background: #fff;
+  line-height: 1.5;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+img {
+  width: 100%;
+  display: block;
+}
+
+/* Avatar navbar — khung tròn, không bị rule img 100% làm méo */
+.nav-actions .nav-user-link img,
+.nav-actions #navbarUserAvatar {
+  width: 40px;
+  height: 40px;
+  max-width: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.container {
+  width: 1200px;
+  max-width: calc(100% - 32px);
+  margin: 0 auto;
+}
+
+/* Navbar */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: var(--white);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  z-index: 1000;
+}
+
+.nav-container {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  font-size: 32px;
+  font-weight: bold;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+a.logo {
+  display: inline-block;
+  cursor: pointer;
+  transition:
+    color 0.28s ease,
+    opacity 0.28s ease,
+    transform 0.22s ease;
+}
+
+a.logo:hover {
+  color: var(--primary-dark);
+  opacity: 0.9;
+}
+
+a.logo:active {
+  transform: scale(0.97);
+}
+
+.nav-menu {
+  list-style: none;
+  display: flex;
+  gap: 32px;
+}
+
+.nav-menu a {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.nav-menu a:hover {
+  color: var(--primary);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-icon {
+  font-size: 22px;
+}
+
+.btn {
+  border: none;
+  outline: none;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 12px 22px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 2px solid var(--border);
+}
+
+.btn-outline:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Hero */
+.hero {
+  position: relative;
+  height: 480px; /* đã giảm từ 620 */
+  margin-top: 72px;
+  background: url("https://images.unsplash.com/photo-1684247969270-87c01490a584?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1400")
+    center/cover no-repeat;
+  display: flex;
+  align-items: center;
+}
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  color: var(--white);
+  text-align: center;
+}
+
+.hero-content h1 {
+  font-size: 64px;
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+
+.hero-led-title {
+  position: relative;
+  display: inline-block;
+  font-family: "Sora", "Be Vietnam Pro", Arial, sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.92);
+  -webkit-text-stroke: 1.2px rgba(201, 255, 226, 0.72);
+  text-shadow:
+    0 0 14px rgba(86, 243, 160, 0.2),
+    0 0 36px rgba(50, 194, 116, 0.18);
+}
+
+.hero-led-title::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  -webkit-text-stroke: 1.8px transparent;
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0) 32%,
+    rgba(196, 255, 227, 0.88) 47%,
+    rgba(102, 255, 176, 0.98) 50%,
+    rgba(196, 255, 227, 0.88) 53%,
+    rgba(255, 255, 255, 0) 68%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 8px rgba(142, 255, 197, 0.75));
+  animation: ledStrokeSweep 3.2s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes ledStrokeSweep {
+  0% {
+    background-position: -160% 0;
+  }
+  100% {
+    background-position: 160% 0;
+  }
+}
+
+.hero-content p {
+  font-size: 28px;
+  margin-bottom: 36px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.search-box {
+  background: var(--white);
+  border-radius: 24px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 220px;
+  gap: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.search-item {
+  text-align: left;
+}
+
+.search-item label {
+  display: block;
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.search-item input,
+.search-item select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #f4faf7;
+  font-size: 15px;
+}
+
+.search-btn-wrap {
+  display: flex;
+  align-items: end;
+}
+
+.btn-search {
+  width: 100%;
+  height: 48px;
+  border-radius: 14px;
+}
+.why-section .section-heading {
+  margin-bottom: 10px;
+}
+/* Section */
+.section {
+  padding: 30px 0; /* Dịch các div lớn lên trên */
+}
+
+.bg-light {
+  background: var(--bg-light);
+}
+
+.section-heading {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.section-heading h2 {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.section-heading p {
+  font-size: 18px;
+  color: var(--muted);
+}
+
+/* Grid */
+.grid {
+  display: grid;
+  gap: 24px;
+}
+
+.grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Tour carousel — hiển thị 3 thẻ, cuộn ngang khi có thêm */
+.tour-carousel {
+  --tour-carousel-gap: 24px;
+  --tour-carousel-visible: 3;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tour-carousel__viewport {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tour-carousel__track {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: var(--tour-carousel-gap);
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.tour-carousel__track .tour-card,
+.tour-carousel__track .promo-card {
+  flex-shrink: 0;
+  align-self: stretch;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.tour-carousel__track .tour-card img,
+.tour-carousel__track .promo-card img {
+  flex-shrink: 0;
+}
+
+.tour-carousel__track .tour-content,
+.tour-carousel__track .promo-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tour-carousel__track .tour-content h3,
+.tour-carousel__track .promo-content h3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(1.35em * 2);
+  margin-bottom: 8px;
+}
+
+.tour-carousel__track .tour-content > p.muted,
+.tour-carousel__track .promo-content > p:not(.muted) {
+  margin: 0 0 14px;
+  min-height: calc(1.55em * 3);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tour-carousel__track .promo-content > div {
+  min-height: 56px;
+  margin-bottom: 8px;
+}
+
+.tour-carousel__track .promo-content > p.muted {
+  min-height: 1.5em;
+  margin-bottom: 12px;
+}
+
+.tour-carousel__track .tour-rating {
+  min-height: 48px;
+  margin-bottom: 12px;
+}
+
+.tour-carousel__track .tour-bottom {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.tour-carousel__track .promo-content .btn {
+  margin-top: auto;
+}
+
+.tour-carousel--promo {
+  --tour-carousel-visible: 2;
+}
+
+.tour-carousel.is-paused .tour-carousel__track {
+  transition-duration: 0.55s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-carousel__track {
+    transition: none;
+  }
+}
+
+.tour-carousel__nav {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgba(16, 55, 33, 0.12);
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--primary-dark, #103721);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.tour-carousel__nav span {
+  display: block;
+  margin-top: -2px;
+  pointer-events: none;
+}
+
+.tour-carousel__nav:hover:not(:disabled) {
+  background: rgba(91, 244, 160, 0.15);
+  border-color: rgba(91, 244, 160, 0.6);
+}
+
+.tour-carousel__nav:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tour-carousel__nav[hidden] {
+  display: none;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Destination & Tour cards — cùng kích thước */
+.destination-card,
+.tour-card {
+  background: var(--white);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.destination-card,
+.tour-card,
+.promo-card {
+  position: relative;
+  border: 1px solid transparent;
+  transition: transform 0.24s ease, box-shadow 0.24s ease;
+}
+
+.destination-card:hover,
+.tour-card:hover,
+.promo-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(122, 255, 180, 0.75);
+  box-shadow:
+    0 14px 32px rgba(16, 55, 33, 0.16),
+    0 0 0 1px rgba(122, 255, 180, 0.45),
+    0 0 18px rgba(91, 244, 160, 0.4);
+}
+
+.destination-card img,
+.tour-card img {
+  width: 100%;
+  height: var(--listing-card-image-height, 280px);
+  object-fit: cover;
+  display: block;
+}
+
+.destination-content,
+.tour-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: var(--listing-card-body-min-height, 268px);
+}
+
+.destination-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.destination-top h3,
+.tour-content h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.rating {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+}
+
+.destination-content .location {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 0 0 52px;
+  min-height: calc(1.55em * 3);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.destination-bottom {
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.price-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.destination-bottom .price-label,
+.tour-bottom .muted {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.price-label {
+  color: var(--primary);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.price {
+  color: var(--primary);
+  font-size: 24px;
+  font-weight: 700; /* giảm đậm xuống */
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.reviews {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: right;
+  line-height: 1.5;
+  width: 95px;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.price-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.price-label {
+  color: var(--primary);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.reviews {
+  color: var(--muted);
+  font-size: 15px;
+  text-align: right;
+  line-height: 1.4;
+  max-width: 95px;
+}
+
+/* Tour Card (phần riêng so với destination) */
+.tour-content h3 {
+  margin-bottom: 8px;
+}
+
+.tour-content > p.muted {
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: calc(1.55em * 3);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tour-rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.tour-rating .reviews {
+  width: auto;
+  max-width: none;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tour-bottom {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  height: 116px;
+  min-height: 116px;
+  max-height: 116px;
+  margin-top: auto;
+  padding-top: 4px;
+  padding-right: 152px;
+  box-sizing: border-box;
+}
+
+.tour-bottom > div:first-child {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.tour-bottom > div:first-child > .muted:first-child {
+  margin: 0 0 4px;
+  flex-shrink: 0;
+}
+
+.tour-bottom .home-tour-price,
+.tour-bottom .price {
+  flex-shrink: 0;
+}
+
+.tour-bottom .tour-vat-note {
+  margin: 4px 0 0;
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tour-bottom .btn-detail {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  height: 42px;
+  min-width: 132px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.destination-bottom .price,
+.tour-bottom .price {
+  font-size: 22px;
+}
+
+.btn-detail {
+  border-radius: 12px;
+  padding: 10px 18px;
+  line-height: 1.2;
+}
+
+/* Why choose */
+.why-section {
+  background: linear-gradient(to bottom right, #ebf8f1, #f5faf7);
+}
+
+.feature-card {
+  padding: 24px 16px;
+  text-align: center;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.feature-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #e9f8f0;
+  color: var(--primary);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 12px; /* giảm khoảng cách */
+  font-size: 28px;
+}
+
+.feature-card h3 {
+  font-size: 22px;
+  line-height: 1.3;
+
+  height: 56px; /* fix cứng để đều */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.feature-card p {
+  color: var(--muted);
+  line-height: 1.5;
+
+  height: 48px; /* giữ các dòng đều */
+  margin: 0;
+}
+/* Promotions */
+/* Promotions */
+.promo-card {
+  position: relative;
+  background: var(--white);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.promo-card img {
+  width: 100%;
+  height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.promo-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #ef4444;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  z-index: 2;
+}
+
+.promo-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.promo-content h3 {
+  font-size: 24px;
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+
+.promo-content p {
+  color: var(--muted);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.promo-content .btn {
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+/* Footer */
+.footer {
+  background: #111827;
+  color: white;
+  padding-top: 56px;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 1fr;
+  gap: 32px;
+}
+
+.footer h3,
+.footer h4 {
+  margin-bottom: 16px;
+}
+
+.footer p,
+.footer li,
+.footer a {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+}
+
+.footer ul {
+  list-style: none;
+}
+
+.footer li {
+  margin-bottom: 10px;
+}
+
+.socials {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer-bottom {
+  margin-top: 32px;
+  padding: 18px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 14px;
+}
+.section:nth-of-type(3) {
+  padding-top: 10px;
+}
+/* Responsive */
+@media (max-width: 992px) {
+  .tour-carousel {
+    --tour-carousel-visible: 1;
+  }
+
+  .tour-carousel--promo {
+    --tour-carousel-visible: 1;
+  }
+
+  .grid-4,
+  .grid-3,
+  .grid-2,
+  .search-box,
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-content h1 {
+    font-size: 42px;
+  }
+
+  .hero-content p {
+    font-size: 20px;
+  }
+
+  .nav-menu {
+    display: none;
+  }
+}
+.chatbot-widget {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 9999;
+}
+
+.chatbot-toggle {
+  width: 60px;
+  height: 60px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1dbf73, #0f8f55);
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow:
+    0 10px 26px rgba(9, 56, 34, 0.34),
+    0 0 0 1px rgba(171, 255, 214, 0.38);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chatbot-toggle:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 16px 28px rgba(9, 56, 34, 0.4),
+    0 0 0 1px rgba(171, 255, 214, 0.55),
+    0 0 18px rgba(95, 247, 166, 0.4);
+}
+
+.chatbot-box {
+  width: 380px;
+  height: 540px;
+  background: #f8fffb;
+  border-radius: 22px;
+  border: 1px solid #dff4e8;
+  box-shadow: 0 22px 45px rgba(10, 52, 32, 0.3);
+  overflow: hidden;
+  display: none;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+.chatbot-box.open {
+  display: flex;
+}
+
+.chatbot-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px;
+  background: linear-gradient(135deg, #179b5e, #106d45);
+  color: #fff;
+}
+
+.chatbot-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.chatbot-title-wrap p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.chatbot-header button {
+  background: rgba(255, 255, 255, 0.14);
+  border: none;
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chatbot-messages {
+  flex: 1;
+  padding: 14px;
+  overflow-y: auto;
+  background: linear-gradient(to bottom, #f2fbf6, #f9fffb);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chatbot-message {
+  max-width: 80%;
+  padding: 11px 13px;
+  border-radius: 14px;
+  line-height: 1.5;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.chatbot-message.user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #1dbf73, #169c5e);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(22, 130, 81, 0.25);
+}
+
+.chatbot-message.bot {
+  align-self: flex-start;
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid #e3f3ea;
+}
+
+.chatbot-suggest {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 12px 10px;
+  background: #f8fffb;
+}
+
+.chatbot-chip {
+  border: 1px solid #d3efdf;
+  background: #effaf4;
+  color: #146b42;
+  font-size: 12px;
+  border-radius: 999px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.chatbot-chip:hover {
+  background: #e1f7eb;
+  transform: translateY(-2px);
+}
+
+.chatbot-input-wrap {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid #dcf1e4;
+  background: #ffffff;
+}
+
+.chatbot-input-wrap input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #cfeadb;
+  border-radius: 12px;
+  outline: none;
+  background: #f8fffb;
+}
+
+.chatbot-input-wrap input:focus {
+  border-color: #17a765;
+  box-shadow: 0 0 0 3px rgba(29, 191, 115, 0.15);
+}
+
+.chatbot-input-wrap button {
+  width: 44px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1dbf73, #169c5e);
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  box-shadow: 0 8px 16px rgba(20, 109, 68, 0.25);
+}
+.hero-badge {
+  display: inline-block;
+  margin-bottom: 18px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  backdrop-filter: blur(4px);
+}
+
+.hero-eco-points {
+  margin-top: 28px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.hero-eco-points span {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+}
+
+.hero-eco-points span:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 24px rgba(15, 45, 30, 0.28);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.eco-commitment-section {
+  background: linear-gradient(to bottom, #ffffff, #f5faf7);
+}
+
+.eco-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 24px 20px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  height: 100%;
+  border: 1px solid #edf4ef;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.eco-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 14px 32px rgba(29, 191, 115, 0.12);
+}
+
+.eco-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #e9f8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+}
+
+.eco-card h3 {
+  font-size: 22px;
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+
+.eco-card p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.eco-stat {
+  position: absolute;
+  inset: auto 12px 12px 12px;
+  background: rgba(11, 45, 29, 0.94);
+  color: #eafff3;
+  border: 1px solid rgba(130, 255, 190, 0.55);
+  border-radius: 14px;
+  padding: 12px;
+  text-align: left;
+  transform: translateY(110%);
+  opacity: 0;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.eco-card:hover .eco-stat {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.eco-stat strong {
+  display: block;
+  color: #8dffbf;
+  font-size: 20px;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.eco-stat span {
+  display: block;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.eco-stat em {
+  display: block;
+  margin-top: 6px;
+  color: #c8f8dc;
+  font-size: 11px;
+  font-style: normal;
+  opacity: 0.92;
+}
+
+.eco-cta-section {
+  background: #f5faf7;
+}
+
+.eco-cta {
+  background: linear-gradient(135deg, #1dbf73, #169c5e);
+  color: #fff;
+  border-radius: 28px;
+  padding: 36px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  box-shadow: 0 18px 40px rgba(22, 156, 94, 0.24);
+}
+
+.eco-cta h2 {
+  font-size: 34px;
+  margin-bottom: 10px;
+}
+
+.eco-cta p {
+  font-size: 17px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.eco-cta .btn {
+  background: #fff;
+  color: var(--primary-dark);
+}
+
+.eco-cta .btn:hover {
+  background: #f3fff8;
+}
+
+@media (max-width: 992px) {
+  .hero-eco-points {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .eco-cta {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .hero-badge {
+    font-size: 14px;
+  }
+}

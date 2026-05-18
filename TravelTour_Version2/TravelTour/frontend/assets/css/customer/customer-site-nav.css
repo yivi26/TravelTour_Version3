@@ -1,0 +1,100 @@
+/* Layout customer: chỉ dùng navbar site, không còn topbar */
+:root {
+  --customer-nav-height: 72px;
+}
+
+body.customer-app {
+  padding-top: var(--customer-nav-height);
+}
+
+body.customer-app .dashboard {
+  min-height: calc(100vh - var(--customer-nav-height));
+}
+
+body.customer-app .dashboard-body {
+  min-height: calc(100vh - var(--customer-nav-height));
+}
+
+body.customer-app .sidebar {
+  top: var(--customer-nav-height);
+  height: calc(100vh - var(--customer-nav-height));
+}
+
+body.customer-app .nav-container {
+  gap: 12px;
+}
+
+body.customer-app .customer-nav-menu-toggle {
+  display: none;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 10px;
+  line-height: 1;
+}
+
+body.customer-app .customer-nav-menu-toggle:hover {
+  background: #f3f8f5;
+}
+
+body.customer-app .nav-user-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  font-size: 0;
+  border: 2px solid #e5e7eb;
+  box-sizing: border-box;
+  background: #f8fafc;
+}
+
+body.customer-app .nav-user-link .nav-user-avatar,
+body.customer-app .nav-user-link #navbarUserAvatar,
+body.customer-app #navbarUserAvatar {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  max-width: 40px;
+  max-height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  aspect-ratio: 1 / 1;
+}
+
+@media (max-width: 1023px) {
+  body.customer-app .customer-nav-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  body.customer-app .sidebar {
+    top: var(--customer-nav-height);
+  }
+
+  body.customer-app .sidebar-overlay.show {
+    top: var(--customer-nav-height);
+  }
+}
+
+@media (max-width: 768px) {
+  body.customer-app .site-navbar .nav-menu {
+    display: none;
+  }
+
+  body.customer-app .site-navbar .nav-actions .btn-primary {
+    display: none;
+  }
+}

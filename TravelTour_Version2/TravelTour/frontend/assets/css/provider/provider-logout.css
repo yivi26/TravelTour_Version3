@@ -1,0 +1,48 @@
+/* Nút đăng xuất sidebar — dùng chung mọi trang provider */
+
+aside.sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+aside.sidebar > ul.nav-menu {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.sidebar-logout {
+  margin-top: auto;
+  flex-shrink: 0;
+  padding: 16px 16px 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.sidebar-logout-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: none;
+  background: #ef4444;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.sidebar-logout-btn:hover {
+  background: #dc2626;
+}
+
+.sidebar-logout-btn i {
+  font-size: 15px;
+}

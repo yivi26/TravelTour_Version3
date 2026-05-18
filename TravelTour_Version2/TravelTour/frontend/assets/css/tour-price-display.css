@@ -1,0 +1,81 @@
+/* Giá tour: gạch ngang (cũ) + giá khuyến mãi (xanh) */
+.tour-price-pair {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.tour-price-pair__old {
+  color: #9ca3af;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: line-through;
+  line-height: 1.2;
+}
+
+.tour-price-pair__current {
+  color: #10b981;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.tour-price-pair__unit {
+  display: block;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.tour-card__pricing .tour-price-pair__current {
+  font-size: 22px;
+}
+
+.tour-card__pricing .tour-price-pair__old {
+  font-size: 16px;
+}
+
+.booking-card__price-main .tour-price-pair {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.booking-card__price-main .tour-price-pair__current {
+  font-size: 26px;
+}
+
+.overview-stat .tour-price-pair__current {
+  font-size: 18px;
+}
+
+.home-tour-price .tour-price-pair__current {
+  font-size: 22px;
+}
+
+.home-tour-price,
+.tour-bottom .price.home-tour-price {
+  white-space: normal;
+  color: inherit;
+  font-weight: inherit;
+  font-size: inherit;
+}
+
+.tour-price-slot {
+  display: block;
+}
+
+.price .tour-price-pair__old,
+.tour-bottom .price .tour-price-pair__old {
+  color: #9ca3af !important;
+  font-weight: 500 !important;
+  text-decoration: line-through;
+}
+
+.price .tour-price-pair__current,
+.tour-bottom .price .tour-price-pair__current {
+  color: #10b981 !important;
+  font-weight: 700 !important;
+}

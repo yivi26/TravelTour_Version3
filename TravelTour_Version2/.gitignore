@@ -1,0 +1,13 @@
+.env
+.env.*
+**/.env
+TravelTour/backend/.env
+
+node_modules/
+TravelTour/backend/node_modules/
+
+TravelTour/backend/uploads/
+
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TravelTour - Khám phá thế giới</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="../../assets/css/navbar.css" />
+    <link rel="stylesheet" href="../../assets/css/tours/dstour.css" />
+    <link rel="stylesheet" href="../../assets/css/tour-price-display.css" />
+    <link rel="stylesheet" href="../../assets/css/hero-search.css" />
+  </head>
+
+  <body class="has-public-navbar">
+    <nav class="navbar">
+      <div class="container nav-container">
+        <!-- Click logo để về trang chủ -->
+        <a
+          class="logo"
+          href="../../index.html"
+          data-setting-text="platform_name"
+          aria-label="Về trang chủ"
+          >TravelTour</a
+        >
+
+        <ul class="nav-menu">
+          <li><a href="../../index.html">Trang chủ</a></li>
+          <li><a href="../../index.html#about">Giới thiệu</a></li>
+          <li><a href="./dstour.html">Tour</a></li>
+        </ul>
+
+        <div class="nav-actions">
+          <button type="button" class="btn btn-primary">Đặt tour</button>
+          <button type="button" class="btn btn-outline" id="btnAuth">
+            Đăng nhập
+          </button>
+          <a href="/login" class="user-icon nav-user-link" id="navUserLink" hidden aria-hidden="true">
+            <img
+              id="navbarUserAvatar"
+              class="nav-user-avatar"
+              src="../../assets/img/default-avatar.svg"
+              alt="Hồ sơ"
+              width="36"
+              height="36"
+            />
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="site-main">
+      <section class="hero">
+        <div class="hero-overlay"></div>
+
+        <div class="container hero-content">
+          <h1
+            class="hero-led-title"
+            data-text="Khám phá Việt Nam cùng TravelTour"
+          >
+            Khám phá Việt Nam cùng
+            <span data-setting-text="platform_name">TravelTour</span>
+          </h1>
+
+          <p data-setting-text="slogan">
+            Trải nghiệm du lịch sinh thái bền vững
+          </p>
+
+          <div class="search-box">
+            <div class="search-item">
+              <label for="tour-destination">Điểm đến</label>
+              <input
+                type="text"
+                id="tour-destination"
+                name="destination"
+                placeholder="Bạn muốn đi đâu?"
+                autocomplete="off"
+              />
+            </div>
+
+            <div class="search-item search-item--date">
+              <label for="tour-departure-trigger">Thời gian</label>
+              <div class="date-picker" id="tour-date-picker">
+                <button
+                  type="button"
+                  class="date-picker__trigger"
+                  id="tour-departure-trigger"
+                  aria-haspopup="dialog"
+                  aria-expanded="false"
+                >
+                  <span class="date-picker__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+                      <rect
+                        x="3"
+                        y="5"
+                        width="18"
+                        height="16"
+                        rx="3"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                      />
+                      <path
+                        d="M3 10h18M8 3v4M16 3v4"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                  </span>
+                  <span class="date-picker__main">
+                    <span class="date-picker__caption">Ngày đi</span>
+                    <span
+                      class="date-picker__value"
+                      data-placeholder="Chọn ngày"
+                      >Chọn ngày</span
+                    >
+                  </span>
+                </button>
+                <div class="date-picker__dropdown" hidden>
+                  <div class="date-picker__header">
+                    <button
+                      type="button"
+                      class="date-picker__nav date-picker__nav--prev"
+                      aria-label="Tháng trước"
+                    >
+                      ‹
+                    </button>
+                    <span class="date-picker__month"></span>
+                    <button
+                      type="button"
+                      class="date-picker__nav date-picker__nav--next"
+                      aria-label="Tháng sau"
+                    >
+                      ›
+                    </button>
+                  </div>
+                  <div class="date-picker__weekdays"></div>
+                  <div class="date-picker__days"></div>
+                </div>
+                <input
+                  type="hidden"
+                  id="tour-departure-date"
+                  name="date"
+                  value=""
+                />
+              </div>
+            </div>
+
+            <div class="search-item search-item--passengers">
+              <span class="search-item__label" id="tour-passengers-label">Hành khách</span>
+              <div
+                class="passenger-picker"
+                id="tour-passenger-picker"
+                aria-labelledby="tour-passengers-label"
+              >
+                <button
+                  type="button"
+                  class="passenger-picker__trigger"
+                  id="tour-passengers-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                >
+                  <span class="passenger-picker__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+                      <circle
+                        cx="9"
+                        cy="8"
+                        r="3.2"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                      />
+                      <circle
+                        cx="16.5"
+                        cy="10"
+                        r="2.5"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                      />
+                      <path
+                        d="M3.5 19c.8-2.8 3-4.5 5.5-4.5S13.7 16.2 14.5 19M14 17.5c.6-1.8 2.2-3 4-3s3.4 1.2 4 3"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                  </span>
+                  <span class="passenger-picker__main">
+                    <span class="passenger-picker__caption">Số khách</span>
+                    <span
+                      class="passenger-picker__value"
+                      data-placeholder="Chọn số khách"
+                      >Chọn số khách</span
+                    >
+                  </span>
+                  <span class="passenger-picker__caret" aria-hidden="true">
+                    <svg viewBox="0 0 12 8" width="12" height="8" fill="none">
+                      <path
+                        d="M1 1.5 6 6.5 11 1.5"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                </button>
+                <div class="passenger-picker__dropdown" hidden>
+                  <ul
+                    class="passenger-picker__list"
+                    role="listbox"
+                    aria-label="Chọn số khách"
+                  ></ul>
+                </div>
+                <input
+                  type="hidden"
+                  id="tour-passengers"
+                  name="passengers"
+                  value=""
+                />
+              </div>
+            </div>
+
+            <div class="search-btn-wrap">
+              <button class="btn-search" type="button">Tìm kiếm</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="results-section">
+        <div class="container results-shell">
+          <div class="results-toolbar">
+            <h2 class="results-title">Đang tải tours...</h2>
+
+            <div class="sort-box">
+              <label class="sort-box__label" for="tour-sort">
+                Sắp xếp theo:
+              </label>
+
+              <div class="sort-box__select">
+                <select id="tour-sort" name="tour-sort" aria-label="Sắp xếp tour">
+                  <option selected>Phổ biến nhất</option>
+                  <option>Giá tăng dần</option>
+                  <option>Giá giảm dần</option>
+                  <option>Đánh giá cao nhất</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="results-layout">
+            <aside class="filters-card" aria-label="Bộ lọc">
+              <div class="filters-card__header">
+                <h3>Bộ lọc</h3>
+                <button class="filters-reset" type="button">Xóa tất cả</button>
+              </div>
+
+              <section class="filter-group">
+                <h4>Khoảng giá</h4>
+
+                <div class="price-range">
+                  <input
+                    id="price-range"
+                    class="price-range__slider"
+                    type="range"
+                    min="0"
+                    max="50000000"
+                    value="25000000"
+                    step="1000000"
+                    aria-label="Khoảng giá"
+                  />
+
+                  <div class="price-range__values">
+                    <span>0đ</span>
+                    <span id="price-value">Tối đa: 25.000.000đ</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="filter-group">
+                <h4>Thời gian</h4>
+
+                <label class="filter-option">
+                  <input type="checkbox" name="duration" value="1-3 ngày" />
+                  <span>1-3 ngày</span>
+                </label>
+
+                <label class="filter-option">
+                  <input type="checkbox" name="duration" value="4-7 ngày" />
+                  <span>4-7 ngày</span>
+                </label>
+
+                <label class="filter-option">
+                  <input type="checkbox" name="duration" value="Trên 7 ngày" />
+                  <span>Trên 7 ngày</span>
+                </label>
+              </section>
+
+              <section class="filter-group">
+                <h4>Loại tour</h4>
+
+                <select id="tour-type" class="filter-select" aria-label="Chọn loại tour">
+                  <option value="">-- Chọn danh mục --</option>
+                  <option value="1">Rừng nhiệt đới</option>
+                  <option value="2">Biển đảo</option>
+                  <option value="3">Núi cao – Trekking</option>
+                  <option value="4">Làng nghề truyền thống</option>
+                  <option value="5">Nông nghiệp sinh thái</option>
+                  <option value="6">Du lịch cộng đồng</option>
+                </select>
+              </section>
+
+              <section class="filter-group">
+                <h4>Đánh giá</h4>
+
+                <label class="filter-option">
+                  <input type="checkbox" name="rating" value="5" />
+                  <span class="filter-stars">★★★★★</span>
+                </label>
+
+                <label class="filter-option">
+                  <input type="checkbox" name="rating" value="4+" />
+                  <span class="filter-stars">★★★★</span>
+                </label>
+
+                <label class="filter-option">
+                  <input type="checkbox" name="rating" value="3+" />
+                  <span class="filter-stars">★★★</span>
+                </label>
+
+                <label class="filter-option">
+                  <input type="checkbox" name="rating" value="2+" />
+                  <span class="filter-stars">★★</span>
+                </label>
+
+                <label class="filter-option">
+                  <input type="checkbox" name="rating" value="1+" />
+                  <span class="filter-stars">★</span>
+                </label>
+              </section>
+
+              <section class="filter-group filter-group--last">
+                <h4>Khu vực</h4>
+
+                <label class="filter-option">
+                  <input type="checkbox" name="region" value="Miền Bắc" />
+                  <span>Miền Bắc</span>
+                </label>
+
+                <label class="filter-option">
+                  <input type="checkbox" name="region" value="Miền Trung" />
+                  <span>Miền Trung</span>
+                </label>
+
+                <label class="filter-option">
+                  <input type="checkbox" name="region" value="Miền Nam" />
+                  <span>Miền Nam</span>
+                </label>
+              </section>
+            </aside>
+
+            <div class="tours-panel">
+              <div class="tour-grid">
+                <div
+                  style="grid-column: 1 / -1; padding: 32px; text-align: center;"
+                >
+                  Đang tải danh sách tour...
+                </div>
+              </div>
+
+              <nav class="pagination" aria-label="Phân trang"></nav>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div class="footer-brand">
+          <a class="brand brand--footer" href="#" aria-label="TravelTour">
+            <span class="brand__text">TravelTour</span>
+          </a>
+
+          <p>
+            Đồng hành cùng bạn khám phá thế giới với những trải nghiệm du lịch
+            tuyệt vời nhất
+          </p>
+        </div>
+
+        <div class="footer-column">
+          <h4>Về chúng tôi</h4>
+          <a href="#">Giới thiệu</a>
+          <a href="#">Liên hệ</a>
+          <a href="#">Tuyển dụng</a>
+          <a href="#">Tin tức</a>
+        </div>
+
+        <div class="footer-column">
+          <h4>Hỗ trợ</h4>
+          <a href="#">Điều khoản</a>
+          <a href="#">Chính sách</a>
+          <a href="#">FAQ</a>
+          <a href="#">Hướng dẫn</a>
+        </div>
+
+        <div class="footer-column">
+          <h4>Liên hệ</h4>
+          <div class="footer-contact">
+            <span>📍 123 Nguyễn Huệ, Q.1, TP.HCM</span>
+          </div>
+          <div class="footer-contact">
+            <span>☎ 1900 1234</span>
+          </div>
+          <div class="footer-contact">
+            <span>✉ support@traveltour.vn</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="container footer-bottom">
+        <p>© 2024 TravelTour. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <script defer src="../../assets/js/auth/navbar-avatar.js"></script>
+    <script defer src="../../assets/js/auth/public-navbar-auth.js"></script>
+    <script defer src="../../assets/js/caidat.js"></script>
+    <script defer src="../../assets/js/tours/tourPriceDisplay.js"></script>
+    <script defer src="../../assets/js/tours/hero-date-picker.js"></script>
+    <script defer src="../../assets/js/tours/hero-passenger-picker.js"></script>
+    <script defer src="../../assets/js/tours/dstour.js"></script>
+  </body>
+</html>

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lịch trình của tôi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
+    />
+    <link rel="stylesheet" href="../../assets/css/guide/tongquan.css" />
+    <link rel="stylesheet" href="../../assets/css/guide/lichtrinh.css" />
+  </head>
+
+  <body>
+    <div class="dashboard">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="brand">
+            <a href="tongquan.html" class="logo">TravelTour</a>
+            <div class="brand-sub">Hướng dẫn viên</div>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="user-info">
+            <p class="user-name" id="topbarUserName">Đang tải...</p>
+            <p class="user-role" id="topbarUserRole">Hướng dẫn viên</p>
+          </div>
+
+          <img
+            class="user-avatar"
+            id="topbarUserAvatar"
+            src="https://ui-avatars.com/api/?name=User&background=16a34a&color=fff"
+            alt="Guide Avatar"
+          />
+        </div>
+      </header>
+
+      <div class="dashboard-body">
+        <aside class="sidebar">
+          <nav class="sidebar-menu">
+            <a href="tongquan.html" class="menu-item">
+              <span class="menu-icon">📊</span>
+              <span>Dashboard</span>
+            </a>
+
+            <a href="lichtrinh.html" class="menu-item active">
+              <span class="menu-icon">🗓</span>
+              <span>Lịch trình của tôi</span>
+            </a>
+
+            <a href="tourdangdan.html" class="menu-item">
+              <span class="menu-icon">📍</span>
+              <span>Tour đang dẫn</span>
+            </a>
+
+            <a href="khachhang.html" class="menu-item">
+              <span class="menu-icon">👥</span>
+              <span>Khách hàng</span>
+            </a>
+
+            <a href="thunhap.html" class="menu-item">
+              <span class="menu-icon">💰</span>
+              <span>Thu nhập</span>
+            </a>
+
+            <a href="hosocanhan.html" class="menu-item">
+              <span class="menu-icon">👤</span>
+              <span>Hồ sơ cá nhân</span>
+            </a>
+
+            <button class="menu-item logout-btn" id="logoutBtn" type="button">
+              <span class="menu-icon">🚪</span>
+              <span>Đăng xuất</span>
+            </button>
+          </nav>
+        </aside>
+
+        <main class="main-content">
+          <div class="lt-page page-container">
+            <header class="lt-page-header">
+              <div>
+                <h1>Lịch trình của tôi</h1>
+                <p>Đăng ký ngày rảnh, xem lịch và tour được phân công</p>
+              </div>
+              <div class="lt-legend">
+                <span class="lt-legend-item"><i class="lt-dot lt-dot--free"></i> Rảnh</span>
+                <span class="lt-legend-item"><i class="lt-dot lt-dot--tour"></i> Có tour</span>
+                <span class="lt-legend-item"><i class="lt-dot lt-dot--pick"></i> Đang chọn</span>
+                <span class="lt-legend-item"><i class="lt-dot lt-dot--today"></i> Hôm nay</span>
+              </div>
+            </header>
+
+            <nav class="lt-tabs" role="tablist" aria-label="Lịch trình">
+              <button type="button" class="lt-tab is-active" data-tab="register" role="tab" aria-selected="true">
+                <i class="ti ti-calendar-plus"></i>
+                Đăng ký ngày rảnh
+              </button>
+              <button type="button" class="lt-tab" data-tab="list" role="tab" aria-selected="false">
+                <i class="ti ti-list-details"></i>
+                Danh sách lịch
+              </button>
+              <button type="button" class="lt-tab" data-tab="assigned" role="tab" aria-selected="false">
+                <i class="ti ti-map-pin"></i>
+                Tour được phân công
+              </button>
+            </nav>
+
+            <section id="ltPanelRegister" class="lt-panel is-active" role="tabpanel">
+              <div class="lt-register-layout">
+                <div class="lt-card lt-calendar-card">
+                  <div class="lt-calendar-toolbar">
+                    <button type="button" class="lt-icon-btn" id="ltPrevMonth" aria-label="Tháng trước">
+                      <i class="ti ti-chevron-left"></i>
+                    </button>
+                    <h2 id="ltMonthLabel">Tháng 5, 2026</h2>
+                    <button type="button" class="lt-icon-btn" id="ltNextMonth" aria-label="Tháng sau">
+                      <i class="ti ti-chevron-right"></i>
+                    </button>
+                  </div>
+                  <div class="lt-weekdays">
+                    <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
+                  </div>
+                  <div id="ltCalendarGrid" class="lt-calendar-grid"></div>
+                </div>
+
+                <aside class="lt-card lt-side-panel">
+                  <h3>Ngày đã chọn</h3>
+                  <div id="ltSelectedChips" class="lt-chip-list">
+                    <p class="lt-muted">Chưa chọn ngày nào</p>
+                  </div>
+
+                  <label class="lt-field">
+                    <span>Giờ từ</span>
+                    <select id="ltTimeFrom"></select>
+                  </label>
+                  <label class="lt-field">
+                    <span>Giờ đến</span>
+                    <select id="ltTimeTo"></select>
+                  </label>
+                  <label class="lt-field">
+                    <span>Loại tour</span>
+                    <select id="ltTourType">
+                      <option value="Tất cả loại tour">Tất cả loại tour</option>
+                      <option value="Tour trong ngày">Tour trong ngày</option>
+                      <option value="Tour nhiều ngày">Tour nhiều ngày</option>
+                      <option value="Tour sinh thái">Tour sinh thái</option>
+                      <option value="Tour văn hóa">Tour văn hóa</option>
+                    </select>
+                  </label>
+                  <label class="lt-field">
+                    <span>Ghi chú</span>
+                    <textarea id="ltNote" rows="3" placeholder="Ghi chú thêm (tuỳ chọn)"></textarea>
+                  </label>
+
+                  <div class="lt-side-actions">
+                    <button type="button" class="lt-btn lt-btn--primary" id="ltConfirmRegister">
+                      <i class="ti ti-check"></i> Xác nhận đăng ký
+                    </button>
+                    <button type="button" class="lt-btn lt-btn--ghost" id="ltClearSelection">
+                      Xóa lựa chọn
+                    </button>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            <section id="ltPanelList" class="lt-panel" role="tabpanel" hidden>
+              <div class="lt-list-toolbar">
+                <label class="lt-field lt-field--inline">
+                  <span>Lọc</span>
+                  <select id="ltListFilter">
+                    <option value="all">Tất cả</option>
+                    <option value="available">Ngày rảnh</option>
+                    <option value="tour">Đã có tour</option>
+                  </select>
+                </label>
+                <button type="button" class="lt-btn lt-btn--outline" id="ltListFilterBtn">
+                  <i class="ti ti-filter"></i> Lọc
+                </button>
+              </div>
+              <div id="ltScheduleList" class="lt-schedule-list"></div>
+            </section>
+
+            <section id="ltPanelAssigned" class="lt-panel" role="tabpanel" hidden>
+              <div id="ltAssignedList" class="lt-assigned-list"></div>
+            </section>
+
+            <div id="ltToast" class="lt-toast" role="status" aria-live="polite" hidden></div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script src="../../assets/js/auth/account-lock-fetch.js"></script>
+    <script src="../../assets/js/guide/guideFetch.js"></script>
+    <script src="../../assets/js/guide/guideTopbar.js"></script>
+    <script src="../../assets/js/guide/lichtrinh.js"></script>
+  </body>
+</html>
