@@ -236,7 +236,12 @@ function renderHistory(data) {
                   </button>
                 </div>
               </div>
-              <button class="history-btn history-btn-outline" data-action="rebook" data-id="${booking.id}">
+              <button
+                class="history-btn history-btn-outline"
+                data-action="rebook"
+                data-id="${booking.id}"
+                data-tour-id="${booking.tourId ?? ""}"
+              >
                 Đặt lại
               </button>
             `
@@ -408,7 +413,7 @@ function bindEvents() {
     }
 
     if (action === "rebook") {
-      showMessageModal("Đặt lại booking ID: " + target.dataset.id);
+      handleRebookClick(target.dataset.id, target.dataset.tourId);
     }
   });
 
@@ -660,6 +665,107 @@ function bindConfirmCancelModal() {
 }
 function findBookingById(bookingId) {
   return bookingHistory.find((b) => String(b.id) === String(bookingId)) || null;
+}
+
+async function fetchTourBookingEligibility(tourId) {
+  const token = localStorage.getItem("accessToken");
+  if (!token) {
+    return { canBook: false, reason: "not_logged_in" };
+  }
+
+  const response = await fetch(
+    `${API_ORIGIN}/api/bookings/tour/${encodeURIComponent(tourId)}/eligibility`,
+    {
+      headers: { Authorization: "Bearer " + token },
+    },
+  );
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.success) {
+    throw new Error(result.message || "Không kiểm tra được điều kiện đặt lại tour.");
+  }
+  return result.data || { canBook: false };
+}
+
+function buildRebookBlockedMessage(booking, eligibility) {
+  const tourLabel = booking?.tourName ? `「${booking.tourName}」` : "tour này";
+  const reason = String(eligibility?.reason || "");
+
+  if (reason === "max_active_bookings" || reason === "active_booking") {
+    const code = eligibility?.existingBooking?.booking_code;
+    return [
+      `Bạn đã có 2 đơn đặt ${tourLabel} đang xử lý.`,
+      code ? `Mã đơn gần nhất: ${code}.` : "",
+      "Không thể đặt thêm cho đến khi một đơn hoàn tất hoặc được hủy.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (reason === "completed_same_schedule") {
+    const prev = eligibility?.previousCompleted;
+    const prevLine =
+      booking?.travelDate && formatDate(booking.travelDate)
+        ? `\nLịch bạn đã đi: khởi hành ${formatDate(booking.travelDate)}.`
+        : "";
+    return (
+      (eligibility?.message ||
+        `Bạn đã hoàn thành ${tourLabel}. Chỉ có thể đặt lại khi nhà cung cấp cập nhật ngày khởi hành / kết thúc mới.`) + prevLine
+    );
+  }
+
+  if (reason === "tour_not_found") {
+    return "Không tìm thấy tour để đặt lại. Vui lòng liên hệ hỗ trợ.";
+  }
+
+  return (
+    eligibility?.message ||
+    `Hiện không thể đặt lại ${tourLabel}. Vui lòng thử lại sau hoặc liên hệ hỗ trợ.`
+  );
+}
+
+async function handleRebookClick(bookingId, tourIdFromBtn) {
+  const booking = findBookingById(bookingId);
+  const tourId = tourIdFromBtn || booking?.tourId;
+
+  if (!booking) {
+    showMessageModal("Không tìm thấy thông tin đơn đặt.", "Không thể đặt lại");
+    return;
+  }
+
+  if (!tourId) {
+    showMessageModal(
+      "Không xác định được tour để đặt lại. Hãy mở Chi tiết đơn hoặc liên hệ hỗ trợ.",
+      "Không thể đặt lại",
+    );
+    return;
+  }
+
+  const token = localStorage.getItem("accessToken");
+  if (!token) {
+    showMessageModal("Vui lòng đăng nhập để đặt lại tour.", "Cần đăng nhập");
+    window.location.href = `../dangnhap/login.html?return_to=${encodeURIComponent(window.location.pathname)}`;
+    return;
+  }
+
+  try {
+    const eligibility = await fetchTourBookingEligibility(tourId);
+
+    if (!eligibility.canBook) {
+      showMessageModal(
+        buildRebookBlockedMessage(booking, eligibility),
+        "Không thể đặt lại",
+      );
+      return;
+    }
+
+    window.location.href = `../tours/chitiet.html?id=${encodeURIComponent(tourId)}`;
+  } catch (error) {
+    console.error("handleRebookClick:", error);
+    showMessageModal(
+      error.message || "Không kiểm tra được điều kiện đặt lại. Vui lòng thử lại.",
+      "Lỗi",
+    );
+  }
 }
 
 function openOfficePaymentModal(booking) {

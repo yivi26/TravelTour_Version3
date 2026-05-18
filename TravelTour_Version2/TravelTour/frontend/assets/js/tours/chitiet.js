@@ -8,6 +8,8 @@
   let reviewContextBookingId = null;
   let reviewContextBookingStatus = null;
   let reviewPanelContext = null;
+  /** Điều kiện đặt tour của khách đăng nhập (null = chưa kiểm tra / khách). */
+  let tourBookingEligibility = null;
   let guideReviewSelectedRating = 5;
   let guideReviewSelectedTags = new Set();
 
@@ -30,7 +32,10 @@
   const dateInput = document.getElementById("departure-date");
   const endDateInput = document.getElementById("tour-end-date");
   const adultSelect = document.getElementById("adult-count");
-  const childSelect = document.getElementById("child-count");
+  const childUnder7Select = document.getElementById("child-under-7-count");
+  const child7PlusSelect = document.getElementById("child-7plus-count");
+  /** Giữ số đã clamp khi input đang rỗng (user đang sửa). */
+  const guestCountScratch = { adults: null, u7: null, p7: null };
   const lineLabel = document.getElementById("booking-line-label");
   const lineTotal = document.getElementById("booking-line-total");
   const grandTotal = document.getElementById("booking-grand-total");
@@ -227,12 +232,45 @@
     return method || "—";
   }
 
-  function applyExistingBookingPanel(bookingDetail) {
+  async function fetchTourBookingEligibility(tourId) {
+    const user = getCurrentUser();
+    if (!user || String(user.role || "").toLowerCase() !== "customer") {
+      return { canBook: true };
+    }
+    const token = localStorage.getItem("accessToken");
+    if (!token) return { canBook: true };
+
+    const res = await fetch(
+      `${API_BASE}/api/bookings/tour/${encodeURIComponent(tourId)}/eligibility`,
+      { headers: getAuthHeaders(false) },
+    );
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || !payload.success) {
+      return { canBook: true };
+    }
+    return payload.data || { canBook: true };
+  }
+
+  function removeExistingBookingPanel() {
+    const existing = document.getElementById("existing-booking-panel");
+    if (existing) existing.remove();
+    if (bookingForm) {
+      bookingForm.hidden = false;
+      bookingForm.style.display = "";
+    }
+    const rebookHint = document.getElementById("booking-rebook-hint");
+    if (rebookHint) rebookHint.remove();
+  }
+
+  function applyExistingBookingPanel(bookingDetail, options) {
+    const opts = options || {};
     const panel = document.querySelector(".booking-panel .booking-card");
     if (!panel || !bookingForm) return;
 
-    bookingForm.hidden = true;
-    bookingForm.style.display = "none";
+    if (opts.hideForm !== false) {
+      bookingForm.hidden = true;
+      bookingForm.style.display = "none";
+    }
 
     let existing = document.getElementById("existing-booking-panel");
     if (!existing) {
@@ -290,7 +328,10 @@
         </div>
       </dl>
       <p class="existing-booking-panel__note">
-        Bạn đã đặt tour này. Không thể đặt trùng từ trang chi tiết.
+        ${escapeHtml(
+          opts.note ||
+            "Bạn đã đặt tour này. Không thể đặt trùng từ trang chi tiết.",
+        )}
       </p>
       <div class="existing-booking-panel__actions">
         <a class="existing-booking-panel__link" href="../customer/history.html">Lịch sử đặt tour</a>
@@ -775,6 +816,7 @@
     renderMeetingPointMap(tour);
     renderExtraInfo(tour);
     renderPolicySection(tour);
+    initGuestSelectorsFromTour(tour);
     updateBookingSummary();
   }
 
@@ -1240,15 +1282,210 @@
     }
   }
 
+  function getTourRemainingSlots(tour) {
+    const max = Number(tour?.max_capacity || 0);
+    const booked = Number(tour?.booked_participants || 0);
+    if (!max || max < 1) return 60;
+    return Math.max(0, max - booked);
+  }
+
+  function syncBookingCapacityHint(tour) {
+    const el = document.getElementById("booking-capacity-hint");
+    if (!el) return;
+    const max = Number(tour?.max_capacity || 0);
+    if (!max) {
+      el.hidden = true;
+      return;
+    }
+    const booked = Number(tour?.booked_participants || 0);
+    const rem = Math.max(0, max - booked);
+    el.hidden = false;
+    el.textContent = `Tour tối đa ${max} người — đã đặt ${booked} — bạn có thể chọn tối đa ${rem} khách (người lớn + trẻ em). Trẻ dưới 7 tuổi: miễn phí; từ 7 tuổi: tính giá như người lớn.`;
+  }
+
+  function readGuestCountField(el) {
+    if (!el) return undefined;
+    const raw = String(el.value ?? "").trim();
+    if (raw === "") return undefined;
+    const n = Math.trunc(Number(raw));
+    return Number.isFinite(n) ? n : undefined;
+  }
+
+  function applyGuestNumberInput(inputEl, min, max, value, opts) {
+    if (!inputEl) return;
+    const lo = Math.max(0, Math.floor(Number(min)));
+    const hi = Math.max(lo, Math.floor(Number(max)));
+    let v = Math.floor(Number(value));
+    if (!Number.isFinite(v)) v = lo;
+    v = Math.min(hi, Math.max(lo, v));
+    inputEl.setAttribute("min", String(lo));
+    inputEl.setAttribute("max", String(hi));
+    inputEl.min = String(lo);
+    inputEl.max = String(hi);
+    const preserveEmpty =
+      opts && opts.preserveEmptyWhileFocused === true;
+    const focused = document.activeElement === inputEl;
+    const raw = String(inputEl.value ?? "").trim();
+    if (preserveEmpty && focused && raw === "") {
+      return;
+    }
+    inputEl.value = String(v);
+  }
+
+  function guestInputReadIntForSummary(el, defaultIfEmpty) {
+    if (!el) return defaultIfEmpty;
+    const raw = String(el.value ?? "").trim();
+    if (raw === "") return defaultIfEmpty;
+    const lo = Math.floor(Number(el.min));
+    const hi = Math.floor(Number(el.max));
+    const loSafe = Number.isFinite(lo) ? lo : 0;
+    let hiSafe = Number.isFinite(hi) ? hi : loSafe;
+    if (hiSafe < loSafe) hiSafe = loSafe;
+    let n = Math.trunc(Number(raw));
+    if (!Number.isFinite(n)) return defaultIfEmpty;
+    return Math.min(Math.max(loSafe, n), hiSafe);
+  }
+
+  function normalizeGuestNumberInput(el) {
+    if (!el) return;
+    const lo = Math.floor(Number(el.min));
+    const hi = Math.floor(Number(el.max));
+    const loSafe = Number.isFinite(lo) ? lo : 0;
+    let hiSafe = Number.isFinite(hi) ? hi : loSafe;
+    if (hiSafe < loSafe) hiSafe = loSafe;
+    const raw = String(el.value ?? "").trim();
+    let n;
+    if (raw === "") {
+      n = loSafe;
+    } else {
+      n = Math.trunc(Number(raw));
+      if (!Number.isFinite(n)) n = loSafe;
+    }
+    n = Math.min(Math.max(loSafe, n), hiSafe);
+    el.value = String(n);
+  }
+
+  function bindGuestCountInput(el) {
+    if (!el) return;
+    el.addEventListener("input", onGuestCountChange);
+    el.addEventListener("change", onGuestCountChange);
+    el.addEventListener("blur", function () {
+      normalizeGuestNumberInput(el);
+      onGuestCountChange();
+    });
+  }
+
+  function rebuildGuestCountInputs(tour, preferred) {
+    if (!adultSelect || !childUnder7Select || !child7PlusSelect) return;
+
+    const cap = getTourRemainingSlots(tour);
+
+    const pa =
+      preferred && preferred.adults !== undefined
+        ? preferred.adults
+        : undefined;
+    const pu7 =
+      preferred && preferred.u7 !== undefined ? preferred.u7 : undefined;
+    const pp7 =
+      preferred && preferred.p7 !== undefined ? preferred.p7 : undefined;
+
+    let a =
+      pa !== undefined && Number.isFinite(Number(pa))
+        ? Number(pa)
+        : guestCountScratch.adults != null
+          ? guestCountScratch.adults
+          : Math.min(2, Math.max(1, cap));
+    let u7 =
+      pu7 !== undefined && Number.isFinite(Number(pu7))
+        ? Number(pu7)
+        : guestCountScratch.u7 != null
+          ? guestCountScratch.u7
+          : 0;
+    let p7 =
+      pp7 !== undefined && Number.isFinite(Number(pp7))
+        ? Number(pp7)
+        : guestCountScratch.p7 != null
+          ? guestCountScratch.p7
+          : 0;
+
+    if (!Number.isFinite(a)) a = 1;
+    if (!Number.isFinite(u7)) u7 = 0;
+    if (!Number.isFinite(p7)) p7 = 0;
+
+    if (a < 1) a = 1;
+
+    while (a + u7 + p7 > cap) {
+      if (p7 > 0) p7 -= 1;
+      else if (u7 > 0) u7 -= 1;
+      else if (a > 1) a -= 1;
+      else break;
+    }
+
+    const maxA = Math.max(1, Math.min(cap, cap - u7 - p7));
+    const maxU7 = Math.max(0, cap - a - p7);
+    const maxP7 = Math.max(0, cap - a - u7);
+
+    a = Math.min(a, maxA);
+    u7 = Math.min(u7, maxU7);
+    p7 = Math.min(p7, maxP7);
+
+    guestCountScratch.adults = a;
+    guestCountScratch.u7 = u7;
+    guestCountScratch.p7 = p7;
+
+    const preserve = { preserveEmptyWhileFocused: true };
+    applyGuestNumberInput(adultSelect, 1, maxA, a, preserve);
+    applyGuestNumberInput(childUnder7Select, 0, maxU7, u7, preserve);
+    applyGuestNumberInput(child7PlusSelect, 0, maxP7, p7, preserve);
+  }
+
+  function initGuestSelectorsFromTour(tour) {
+    syncBookingCapacityHint(tour);
+    rebuildGuestCountInputs(tour, null);
+  }
+
+  function onGuestCountChange() {
+    if (!currentTour) return;
+    rebuildGuestCountInputs(currentTour, {
+      adults: readGuestCountField(adultSelect),
+      u7: readGuestCountField(childUnder7Select),
+      p7: readGuestCountField(child7PlusSelect),
+    });
+    updateBookingSummary();
+  }
+
   function updateBookingSummary() {
-    if (!adultSelect || !childSelect || !lineLabel || !lineTotal || !grandTotal) return;
+    if (
+      !adultSelect ||
+      !childUnder7Select ||
+      !child7PlusSelect ||
+      !lineLabel ||
+      !lineTotal ||
+      !grandTotal
+    ) {
+      return;
+    }
 
-    const adults = Number(adultSelect.value) || 0;
-    const children = Number(childSelect.value) || 0;
-    const totalGuests = Math.max(adults + children, 1);
-    const totalPrice = TOUR_PRICE * totalGuests;
+    const adults = guestInputReadIntForSummary(adultSelect, 0);
+    const childrenUnder7 = guestInputReadIntForSummary(childUnder7Select, 0);
+    const children7Plus = guestInputReadIntForSummary(child7PlusSelect, 0);
+    const billable = adults + children7Plus;
+    const totalHeads = adults + childrenUnder7 + children7Plus;
 
-    lineLabel.textContent = `${formatCurrency(TOUR_PRICE)} x ${totalGuests} khách`;
+    if (billable < 1) {
+      lineLabel.textContent = "Chọn ít nhất 1 người lớn hoặc trẻ từ 7 tuổi để tính giá";
+      lineTotal.textContent = formatCurrency(0);
+      grandTotal.textContent = formatCurrency(0);
+      return;
+    }
+
+    const totalPrice = TOUR_PRICE * billable;
+    const extra =
+      childrenUnder7 > 0
+        ? ` + ${childrenUnder7} trẻ <7 (miễn phí), tổng ${totalHeads} khách`
+        : ` (${totalHeads} khách)`;
+
+    lineLabel.textContent = `${formatCurrency(TOUR_PRICE)} × ${billable} khách tính phí${extra}`;
     lineTotal.textContent = formatCurrency(totalPrice);
     grandTotal.textContent = formatCurrency(totalPrice);
   }
@@ -1357,6 +1594,55 @@
 
       if (existingBookingDetail) {
         applyExistingBookingPanel(existingBookingDetail);
+      } else if (getCurrentUser() && !isReviewOnlyMode()) {
+        tourBookingEligibility = await fetchTourBookingEligibility(tourId);
+        if (tourBookingEligibility && !tourBookingEligibility.canBook) {
+          const eb = tourBookingEligibility.existingBooking;
+          if (eb) {
+            applyExistingBookingPanel(eb, {
+              note: tourBookingEligibility.message,
+            });
+          } else if (tourBookingEligibility.message) {
+            alert(tourBookingEligibility.message);
+          }
+        } else if (
+          tourBookingEligibility?.canBook &&
+          tourBookingEligibility.reason === "has_active_booking" &&
+          tourBookingEligibility.existingBooking
+        ) {
+          applyExistingBookingPanel(tourBookingEligibility.existingBooking, {
+            hideForm: false,
+            note:
+              tourBookingEligibility.message ||
+              "Bạn có thể đặt thêm 1 lần nữa cho tour này (ví dụ để bổ sung số khách).",
+          });
+        } else if (
+          tourBookingEligibility?.canBook &&
+          tourBookingEligibility.reason === "new_schedule"
+        ) {
+          removeExistingBookingPanel();
+          const panel = document.querySelector(".booking-panel .booking-card");
+          if (panel && !document.getElementById("booking-rebook-hint")) {
+            const hint = document.createElement("p");
+            hint.id = "booking-rebook-hint";
+            hint.className = "booking-capacity-hint";
+            const prev = tourBookingEligibility.previousCompleted;
+            const prevText =
+              prev?.departure_date && prev?.return_date
+                ? ` (lần trước: ${formatDateVi(prev.departure_date)} – ${formatDateVi(prev.return_date)})`
+                : "";
+            hint.textContent =
+              "Nhà cung cấp đã cập nhật lịch tour mới — bạn có thể đặt lại chuyến này" +
+              prevText +
+              ".";
+            const form = document.getElementById("booking-form");
+            if (form) {
+              panel.insertBefore(hint, form);
+            } else {
+              panel.prepend(hint);
+            }
+          }
+        }
       }
       const reviewOnlyMode = isReviewOnlyMode();
       const reviewOnlyType = reviewOnlyMode ? getReviewOnlyType() : null;
@@ -1422,20 +1708,24 @@
     }
   }
 
-  if (adultSelect) {
-    adultSelect.addEventListener("change", updateBookingSummary);
-  }
+  bindGuestCountInput(adultSelect);
+  bindGuestCountInput(childUnder7Select);
+  bindGuestCountInput(child7PlusSelect);
 
-  if (childSelect) {
-    childSelect.addEventListener("change", updateBookingSummary);
-  }
-
- if (bookingForm) {
-  bookingForm.addEventListener("submit", function (event) {
+  if (bookingForm) {
+    bookingForm.addEventListener("submit", function (event) {
     event.preventDefault();
 
     if (getBookingIdFromURL()) {
       alert("Bạn đã đặt tour này. Vui lòng xem thông tin đơn đặt bên phải.");
+      return;
+    }
+
+    if (tourBookingEligibility && !tourBookingEligibility.canBook) {
+      alert(
+        tourBookingEligibility.message ||
+          "Bạn không thể đặt lại tour này với lịch hiện tại.",
+      );
       return;
     }
 
@@ -1444,7 +1734,10 @@
       return;
     }
 
-    updateBookingSummary();
+    normalizeGuestNumberInput(adultSelect);
+    normalizeGuestNumberInput(childUnder7Select);
+    normalizeGuestNumberInput(child7PlusSelect);
+    onGuestCountChange();
 
     // Truyền dữ liệu qua URL để bước tiếp theo có thể gọi API summary
     const tourId = getEffectiveTourId();
@@ -1455,10 +1748,18 @@
 
     const departureDate = dateInput ? dateInput.value : "";
     const adults = adultSelect ? adultSelect.value : "0";
-    const children = childSelect ? childSelect.value : "0";
+    const childrenUnder7 = childUnder7Select ? childUnder7Select.value : "0";
+    const children7Plus = child7PlusSelect ? child7PlusSelect.value : "0";
 
     if (!departureDate) {
       alert("Vui lòng chọn ngày khởi hành.");
+      return;
+    }
+
+    const billable =
+      Number(adults || 0) + Number(children7Plus || 0);
+    if (billable < 1) {
+      alert("Vui lòng chọn ít nhất 1 người lớn hoặc trẻ em từ 7 tuổi trở lên để tính giá tour.");
       return;
     }
 
@@ -1466,7 +1767,8 @@
       tour_id: tourId,
       departure_date: departureDate,
       adults: adults,
-      children: children,
+      children_under7: childrenUnder7,
+      children_7plus: children7Plus,
     });
     const nextBookingUrl = `./ttkhachhang.html?${qs.toString()}`;
 

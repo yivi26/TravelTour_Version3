@@ -16,7 +16,8 @@ async function fetchBookingSummary(params) {
     tour_id: params.tourId || "",
     departure_date: params.departureDate || "",
     adults: String(params.adults || 0),
-    children: String(params.children || 0),
+    children_under7: String(params.childrenUnder7 || 0),
+    children_7plus: String(params.children7Plus || 0),
   });
 
   const response = await fetch(
@@ -78,6 +79,9 @@ async function fetchBookingSummary(params) {
     var next = Object.assign({}, prev, meta);
     if (meta.minGuests == null && prev.minGuests != null) {
       next.minGuests = prev.minGuests;
+    }
+    if (meta.maxGuests == null && prev.maxGuests != null) {
+      next.maxGuests = prev.maxGuests;
     }
     storedData.bookingMeta = next;
     setStoredData(storedData);
@@ -234,6 +238,19 @@ async function fetchBookingSummary(params) {
   }
 
   function addGuestCard(guest) {
+    var allowed = getAllowedGuestCount();
+    var current = guestList
+      ? guestList.querySelectorAll(".guest-card").length
+      : 0;
+    if (allowed > 0 && current >= allowed) {
+      showToast(
+        "Bạn đã chọn " +
+          allowed +
+          " khách ở bước trước — không thể thêm khách trên form.",
+      );
+      return;
+    }
+
     var newCard = createGuestCard();
 
     if (!newCard) {
@@ -285,9 +302,6 @@ async function fetchBookingSummary(params) {
         : "",
       phone: document.getElementById("booker-phone")
         ? document.getElementById("booker-phone").value.trim()
-        : "",
-      country: document.getElementById("booker-country")
-        ? document.getElementById("booker-country").value
         : "",
       note: document.getElementById("booker-note")
         ? document.getElementById("booker-note").value.trim()
@@ -444,6 +458,73 @@ async function fetchBookingSummary(params) {
     return date;
   }
 
+  /** Ngày khởi hành dạng yyyy-mm-dd (input[type=date]) → Date local nửa đêm. */
+  function parseDepartureYmd(ymd) {
+    if (!ymd) return null;
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd).trim());
+    if (!m) return null;
+    var y = Number(m[1]);
+    var mo = Number(m[2]);
+    var d = Number(m[3]);
+    var dt = new Date(y, mo - 1, d);
+    if (
+      dt.getFullYear() !== y ||
+      dt.getMonth() !== mo - 1 ||
+      dt.getDate() !== d
+    ) {
+      return null;
+    }
+    dt.setHours(0, 0, 0, 0);
+    return dt;
+  }
+
+  /** Tuổi đầy đủ tại refDate (cùng quy tắc backend: ≥7 tuổi tính phí như người lớn). */
+  function getAgeYearsOnReferenceDate(birthDate, refDate) {
+    if (!(birthDate instanceof Date) || isNaN(birthDate.getTime())) {
+      return null;
+    }
+    if (!(refDate instanceof Date) || isNaN(refDate.getTime())) {
+      return null;
+    }
+    var r = new Date(refDate);
+    r.setHours(0, 0, 0, 0);
+    var b = new Date(birthDate);
+    b.setHours(0, 0, 0, 0);
+    var age = r.getFullYear() - b.getFullYear();
+    var monthDiff = r.getMonth() - b.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && r.getDate() < b.getDate())) {
+      age -= 1;
+    }
+    return age;
+  }
+
+  /**
+   * Đếm khách tính phí từ thẻ khách + ngày sinh so với ngày khởi hành.
+   * Thiếu / sai ngày sinh → coi là tính phí (an toàn với server).
+   */
+  function countBillableGuestCards(guestListEl, departureYmd) {
+    var ref = parseDepartureYmd(departureYmd);
+    var cards = guestListEl ? guestListEl.querySelectorAll(".guest-card") : [];
+    if (!ref || !cards.length) {
+      return cards.length;
+    }
+    var billable = 0;
+    for (var i = 0; i < cards.length; i += 1) {
+      var inp = cards[i].querySelector('input[name^="guest-birthday-"]');
+      var raw = inp ? inp.value.trim() : "";
+      var bd = parseDateDDMMYYYY(raw);
+      if (!bd) {
+        billable += 1;
+        continue;
+      }
+      var age = getAgeYearsOnReferenceDate(bd, ref);
+      if (age == null || age >= 7) {
+        billable += 1;
+      }
+    }
+    return billable;
+  }
+
   function getAgeYearsFromBirthDate(birthDate) {
     if (!(birthDate instanceof Date) || isNaN(birthDate.getTime())) {
       return null;
@@ -483,12 +564,10 @@ async function fetchBookingSummary(params) {
     var bookerName = document.getElementById("booker-name");
     var bookerEmail = document.getElementById("booker-email");
     var bookerPhone = document.getElementById("booker-phone");
-    var bookerCountry = document.getElementById("booker-country");
 
     var nameValue = bookerName ? bookerName.value.trim() : "";
     var emailValue = bookerEmail ? bookerEmail.value.trim() : "";
     var phoneValue = bookerPhone ? bookerPhone.value.trim() : "";
-    var countryValue = bookerCountry ? bookerCountry.value.trim() : "";
 
     if (bookerPhone) {
       phoneValue = normalizeVietnamPhone(phoneValue);
@@ -528,11 +607,6 @@ async function fetchBookingSummary(params) {
         bookerPhone,
         "Số điện thoại: 10 số bắt đầu bằng 0, hoặc +84 và 9 số tiếp theo; không khoảng trắng (vd: 0912345678 hoặc +84912345678).",
       );
-      return false;
-    }
-
-    if (!countryValue) {
-      focusAndToast(bookerCountry, "Vui lòng chọn quốc tịch.");
       return false;
     }
 
@@ -689,9 +763,6 @@ async function fetchBookingSummary(params) {
     if (document.getElementById("booker-phone")) {
       document.getElementById("booker-phone").value = customer.phone || "";
     }
-    if (document.getElementById("booker-country")) {
-      document.getElementById("booker-country").value = customer.country || "";
-    }
     if (document.getElementById("booker-note")) {
       document.getElementById("booker-note").value = customer.note || "";
     }
@@ -710,15 +781,38 @@ async function fetchBookingSummary(params) {
   function getBookingParamsFromURL() {
     const params = new URLSearchParams(window.location.search);
 
+    const adults = Number(params.get("adults") || 0);
+    const cu7 = Number(params.get("children_under7") || 0);
+    const cp7 = Number(params.get("children_7plus") || 0);
+    const childrenLegacy = Number(params.get("children") || 0);
+
+    const childrenUnder7 = Number.isFinite(cu7) ? cu7 : 0;
+    let children7Plus = Number.isFinite(cp7) ? cp7 : 0;
+    if (childrenUnder7 === 0 && children7Plus === 0 && childrenLegacy > 0) {
+      children7Plus = childrenLegacy;
+    }
+
     return {
       tourId: params.get("tour_id"),
       departureDate: params.get("departure_date"),
-      adults: Number(params.get("adults") || 0),
-      children: Number(params.get("children") || 0),
+      adults,
+      childrenUnder7,
+      children7Plus,
     };
   }
 
-  /** Số khách tối thiểu theo đơn (URL / bước trước) — không thu hẹp khi thêm khách trên form. */
+  /** Số khách đã chọn ở bước trước (URL / API summary) — vừa tối thiểu vừa tối đa trên form. */
+  function getAllowedGuestCount() {
+    var storedData = getStoredData();
+    var m = storedData.bookingMeta || {};
+    var mx = Number(m.maxGuests);
+    if (Number.isFinite(mx) && mx > 0) {
+      return mx;
+    }
+    return getMinGuestCount();
+  }
+
+  /** Số khách tối thiểu theo đơn (URL / bước trước). */
   function getMinGuestCount() {
     var storedData = getStoredData();
     var m = storedData.bookingMeta || {};
@@ -727,12 +821,21 @@ async function fetchBookingSummary(params) {
       return mg;
     }
     var a = Number(m.adults || 0);
-    var c = Number(m.children || 0);
-    if (a + c > 0) {
-      return a + c;
+    var cu7 = Number(m.childrenUnder7 ?? m.children_under7 ?? 0);
+    var cp7 = Number(m.children7Plus ?? m.children_7plus ?? 0);
+    if (!Number.isFinite(cu7)) cu7 = 0;
+    if (!Number.isFinite(cp7)) cp7 = 0;
+    if (cu7 === 0 && cp7 === 0 && Number(m.children || 0) > 0) {
+      cp7 = Number(m.children || 0);
+    }
+    if (a + cu7 + cp7 > 0) {
+      return a + cu7 + cp7;
     }
     var p = getBookingParamsFromURL();
-    return Math.max(0, Number(p.adults || 0) + Number(p.children || 0));
+    return Math.max(
+      0,
+      Number(p.adults || 0) + Number(p.childrenUnder7 || 0) + Number(p.children7Plus || 0),
+    );
   }
 
   /** Giữ tên cũ: = số khách tối thiểu cần theo đơn (không phải số thẻ hiện tại). */
@@ -742,8 +845,8 @@ async function fetchBookingSummary(params) {
 
   function syncGuestCountToSummaryAndMeta() {
     if (!guestList) return;
-    var count = guestList.querySelectorAll(".guest-card").length;
-    if (count < 1) return;
+    var cardCount = guestList.querySelectorAll(".guest-card").length;
+    if (cardCount < 1) return;
 
     var storedData = getStoredData();
     var meta = storedData.bookingMeta || {};
@@ -752,12 +855,24 @@ async function fetchBookingSummary(params) {
     var per = Number(meta.pricePerPerson || 0);
     if (!(per > 0)) return;
 
+    var allowed = getAllowedGuestCount();
+    var totalHeads = allowed > 0 ? allowed : cardCount;
+
     var fee = Number(meta.serviceFee || 0);
-    var tourTotal = per * count;
+    var billable = Number(meta.billableGuests);
+    if (!Number.isFinite(billable) || billable < 1) {
+      billable = countBillableGuestCards(guestList, meta.departureDate);
+    }
+    if (Number.isFinite(Number(meta.tourTotal)) && Number(meta.tourTotal) > 0) {
+      var tourTotal = Number(meta.tourTotal);
+    } else {
+      tourTotal = per * billable;
+    }
     var grandTotal = tourTotal + fee;
 
     persistTourBookingMeta({
-      totalGuests: count,
+      totalGuests: totalHeads,
+      billableGuests: billable,
       tourTotal: tourTotal,
       grandTotal: grandTotal,
     });
@@ -770,10 +885,19 @@ async function fetchBookingSummary(params) {
     var summaryGrandTotalEl = document.getElementById("summary-grand-total");
 
     if (totalGuestsEl) {
-      totalGuestsEl.textContent = count + " khách";
+      totalGuestsEl.textContent = totalHeads + " khách";
     }
     if (summaryGuestLineEl) {
-      summaryGuestLineEl.innerHTML = "Giá tour ×<br />" + count + " khách";
+      var freeUnder7 =
+        totalHeads > billable ? totalHeads - billable : 0;
+      var extra =
+        freeUnder7 > 0
+          ? "<br /><small>+ " +
+            freeUnder7 +
+            " trẻ dưới 7 tuổi (miễn phí)</small>"
+          : "";
+      summaryGuestLineEl.innerHTML =
+        "Giá tour ×<br />" + billable + " khách tính phí" + extra;
     }
     if (totalPriceEl) {
       totalPriceEl.textContent = formatCurrency(tourTotal);
@@ -794,20 +918,43 @@ async function fetchBookingSummary(params) {
   }
 
   function validateGuestCountMatchBooking() {
+    var allowed = getAllowedGuestCount();
     var minGuests = getMinGuestCount();
     var actualGuests = guestList
       ? guestList.querySelectorAll(".guest-card").length
       : 0;
     var meta = getStoredData().bookingMeta || {};
 
-    if (minGuests <= 0 && !meta.tourId) {
+    if (allowed <= 0 && minGuests <= 0 && !meta.tourId) {
       showToast("Không xác định được số lượng khách từ bước trước.");
+      return false;
+    }
+
+    if (allowed > 0 && actualGuests > allowed) {
+      showToast(
+        "Bạn đã chọn đặt cho " +
+          allowed +
+          " khách — chỉ được nhập đúng " +
+          allowed +
+          " khách trên form (hiện " +
+          actualGuests +
+          " khách).",
+      );
       return false;
     }
 
     if (minGuests > 0 && actualGuests < minGuests) {
       showToast(
-        `Bạn đã chọn đặt cho ${minGuests} khách — vui lòng có ít nhất ${minGuests} khách trên form và nhập đủ thông tin (hiện ${actualGuests} khách).`,
+        `Bạn đã chọn đặt cho ${minGuests} khách — vui lòng có đúng ${minGuests} khách trên form và nhập đủ thông tin (hiện ${actualGuests} khách).`,
+      );
+      return false;
+    }
+
+    if (allowed > 0 && actualGuests !== allowed) {
+      showToast(
+        "Vui lòng có đúng " +
+          allowed +
+          " khách trên form theo số lượng đã chọn ở bước trước.",
       );
       return false;
     }
@@ -819,12 +966,25 @@ async function fetchBookingSummary(params) {
     if (!addGuestButton || !guestList) return;
 
     var meta = getStoredData().bookingMeta || {};
-    if (!meta.tourId && getMinGuestCount() <= 0) {
+    var allowed = getAllowedGuestCount();
+    var current = guestList.querySelectorAll(".guest-card").length;
+
+    if (!meta.tourId && allowed <= 0) {
+      addGuestButton.disabled = true;
       addGuestButton.style.opacity = "0.6";
       addGuestButton.title = "Không xác định được số lượng khách.";
       return;
     }
 
+    if (allowed > 0 && current >= allowed) {
+      addGuestButton.disabled = true;
+      addGuestButton.style.opacity = "0.6";
+      addGuestButton.title =
+        "Đã đủ " + allowed + " khách theo đơn đặt — không thể thêm.";
+      return;
+    }
+
+    addGuestButton.disabled = false;
     addGuestButton.style.opacity = "1";
     addGuestButton.title = "Thêm khách tham gia";
   }
@@ -1142,16 +1302,19 @@ async function fetchBookingSummary(params) {
 
   function applyImportedGuests(rows) {
     var minG = getMinGuestCount();
+    var maxG = getAllowedGuestCount();
     var usedGuestCountFallback = false;
 
     if (minG <= 0 && rows.length > 0) {
       var sd = getStoredData();
       var meta = sd.bookingMeta || {};
-      meta.totalGuests = rows.length;
-      meta.minGuests = rows.length;
+      var capped = maxG > 0 ? Math.min(rows.length, maxG) : rows.length;
+      meta.totalGuests = capped;
+      meta.minGuests = capped;
+      meta.maxGuests = capped;
       sd.bookingMeta = meta;
       setStoredData(sd);
-      minG = rows.length;
+      minG = capped;
       usedGuestCountFallback = true;
       var totalGuestsEl = document.getElementById("tour-total-guests");
       if (totalGuestsEl) {
@@ -1172,6 +1335,9 @@ async function fetchBookingSummary(params) {
     }
 
     var targetCards = Math.max(minG, rows.length);
+    if (maxG > 0) {
+      targetCards = Math.min(maxG, targetCards);
+    }
     ensureGuestCardCount(targetCards);
 
     var cards = guestList.querySelectorAll(".guest-card");
@@ -1412,6 +1578,26 @@ async function fetchBookingSummary(params) {
   if (bookingForm) {
     bookingForm.addEventListener("input", persistBookingData);
     bookingForm.addEventListener("change", persistBookingData);
+    bookingForm.addEventListener("input", function (ev) {
+      var t = ev.target;
+      if (
+        t instanceof HTMLInputElement &&
+        t.name &&
+        String(t.name).indexOf("guest-birthday-") === 0
+      ) {
+        syncGuestCountToSummaryAndMeta();
+      }
+    });
+    bookingForm.addEventListener("change", function (ev) {
+      var t = ev.target;
+      if (
+        t instanceof HTMLInputElement &&
+        t.name &&
+        String(t.name).indexOf("guest-birthday-") === 0
+      ) {
+        syncGuestCountToSummaryAndMeta();
+      }
+    });
     bookingForm.addEventListener("submit", function (event) {
       event.preventDefault();
 
@@ -1491,7 +1677,11 @@ async function fetchBookingSummary(params) {
   const bookingMeta = storedData.bookingMeta || {};
 
   const hasUrlParams =
-    data.tourId && Number(data.adults || 0) + Number(data.children || 0) > 0;
+    data.tourId &&
+    Number(data.adults || 0) +
+      Number(data.childrenUnder7 || 0) +
+      Number(data.children7Plus || 0) >
+      0;
 
   try {
     let summary = null;
@@ -1500,13 +1690,21 @@ async function fetchBookingSummary(params) {
     if (hasUrlParams) {
       [tour, summary] = await Promise.all([
         fetchTourDetailById(data.tourId),
-        fetchBookingSummary(data),
+        fetchBookingSummary({
+          tourId: data.tourId,
+          departureDate: data.departureDate,
+          adults: data.adults,
+          childrenUnder7: data.childrenUnder7,
+          children7Plus: data.children7Plus,
+        }),
       ]);
 
-      var minFromBooking =
-        Number(summary.adults || 0) + Number(summary.children || 0);
+      var minFromBooking = Number(summary.total_guests || 0);
       if (!(minFromBooking > 0)) {
-        minFromBooking = Number(summary.total_guests || 0);
+        minFromBooking =
+          Number(summary.adults || 0) +
+          Number(summary.children_under7 || 0) +
+          Number(summary.children_7plus || 0);
       }
       if (!(minFromBooking > 0)) {
         minFromBooking = 1;
@@ -1516,9 +1714,15 @@ async function fetchBookingSummary(params) {
         tourId: summary.tour_id,
         departureDate: summary.departure_date,
         adults: summary.adults,
-        children: summary.children,
+        childrenUnder7: summary.children_under7,
+        children7Plus: summary.children_7plus,
+        children:
+          Number(summary.children_under7 || 0) +
+          Number(summary.children_7plus || 0),
         minGuests: minFromBooking,
+        maxGuests: minFromBooking,
         totalGuests: summary.total_guests,
+        billableGuests: summary.billable_guests,
         pricePerPerson: summary.price_per_person,
         tourTotal: summary.tour_total,
         serviceFee: summary.service_fee || 0,
@@ -1532,8 +1736,13 @@ async function fetchBookingSummary(params) {
         tour_id: bookingMeta.tourId,
         departure_date: bookingMeta.departureDate,
         adults: bookingMeta.adults || 0,
-        children: bookingMeta.children || 0,
+        children_under7: bookingMeta.childrenUnder7 || 0,
+        children_7plus: bookingMeta.children7Plus || 0,
+        children:
+          Number(bookingMeta.childrenUnder7 || 0) +
+          Number(bookingMeta.children7Plus || 0),
         total_guests: bookingMeta.totalGuests || 0,
+        billable_guests: bookingMeta.billableGuests,
         price_per_person: bookingMeta.pricePerPerson || 0,
         tour_total: bookingMeta.tourTotal || 0,
         service_fee: bookingMeta.serviceFee || 0,
@@ -1566,12 +1775,23 @@ async function fetchBookingSummary(params) {
 
       var totalGuests =
         Number(summary.total_guests || 0) ||
-        Number(summary.adults || 0) + Number(summary.children || 0) ||
-        1;
+        Number(summary.adults || 0) +
+          Number(summary.children_under7 || 0) +
+          Number(summary.children_7plus || 0);
+      if (!(totalGuests > 0)) {
+        totalGuests = 1;
+      }
+
+      var billable = Number(summary.billable_guests);
+      if (!Number.isFinite(billable)) {
+        billable =
+          Number(summary.adults || 0) +
+          Number(summary.children_7plus || 0);
+      }
 
       if (effectivePrice > 0) {
         summary.price_per_person = effectivePrice;
-        summary.tour_total = effectivePrice * totalGuests;
+        summary.tour_total = effectivePrice * billable;
       }
 
       if (summary.service_fee == null) {
@@ -1579,11 +1799,13 @@ async function fetchBookingSummary(params) {
       }
 
       summary.total_guests = totalGuests;
+      summary.billable_guests = billable;
       summary.grand_total =
         Number(summary.tour_total || 0) + Number(summary.service_fee || 0);
 
       persistTourBookingMeta({
         totalGuests: summary.total_guests,
+        billableGuests: summary.billable_guests,
         pricePerPerson: summary.price_per_person,
         tourTotal: summary.tour_total,
         serviceFee: summary.service_fee || 0,
@@ -1644,7 +1866,19 @@ async function fetchBookingSummary(params) {
     }
 
     if (summaryGuestLineEl) {
-      summaryGuestLineEl.innerHTML = `Giá tour ×<br />${summary.total_guests} khách`;
+      var billN = Number(summary.billable_guests);
+      if (!Number.isFinite(billN)) {
+        billN =
+          Number(summary.adults || 0) +
+          Number(summary.children_7plus || 0);
+      }
+      var totN = Number(summary.total_guests || 0);
+      var extraGuestLine =
+        totN > billN
+          ? `<br /><small>+ ${totN - billN} trẻ dưới 7 tuổi (miễn phí), tổng ${totN} khách</small>`
+          : "";
+      summaryGuestLineEl.innerHTML =
+        "Giá tour ×<br />" + billN + " khách tính phí" + extraGuestLine;
     }
 
     if (summaryTourPriceEl) {
@@ -1686,14 +1920,20 @@ async function fetchBookingSummary(params) {
     await renderBookingSummaryFromURL();
     hydrateFromStorage();
     await hydrateBookerFromCustomerProfile();
-    var sd = getStoredData();
-    var guestsStored = sd.guests || [];
-    var cardCount = guestList
-      ? guestList.querySelectorAll(".guest-card").length
-      : 0;
-    var need = Math.max(getMinGuestCount(), guestsStored.length, cardCount);
-    ensureGuestCardCount(need);
+    var allowed = getAllowedGuestCount();
+    if (allowed > 0) {
+      ensureGuestCardCount(allowed);
+    } else {
+      var sd = getStoredData();
+      var guestsStored = sd.guests || [];
+      var cardCount = guestList
+        ? guestList.querySelectorAll(".guest-card").length
+        : 0;
+      var need = Math.max(getMinGuestCount(), guestsStored.length, cardCount);
+      ensureGuestCardCount(need);
+    }
     updateGuestIndexes();
+    syncGuestCountToSummaryAndMeta();
     updateAddGuestButtonState();
   })();
 })();

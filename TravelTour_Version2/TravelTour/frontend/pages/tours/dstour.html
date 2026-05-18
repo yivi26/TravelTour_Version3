@@ -153,75 +153,42 @@
             </div>
 
             <div class="search-item search-item--passengers">
-              <span class="search-item__label" id="tour-passengers-label">Hành khách</span>
-              <div
-                class="passenger-picker"
-                id="tour-passenger-picker"
-                aria-labelledby="tour-passengers-label"
-              >
-                <button
-                  type="button"
-                  class="passenger-picker__trigger"
-                  id="tour-passengers-trigger"
-                  aria-haspopup="listbox"
-                  aria-expanded="false"
-                >
-                  <span class="passenger-picker__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
-                      <circle
-                        cx="9"
-                        cy="8"
-                        r="3.2"
-                        stroke="currentColor"
-                        stroke-width="1.6"
-                      />
-                      <circle
-                        cx="16.5"
-                        cy="10"
-                        r="2.5"
-                        stroke="currentColor"
-                        stroke-width="1.6"
-                      />
-                      <path
-                        d="M3.5 19c.8-2.8 3-4.5 5.5-4.5S13.7 16.2 14.5 19M14 17.5c.6-1.8 2.2-3 4-3s3.4 1.2 4 3"
-                        stroke="currentColor"
-                        stroke-width="1.6"
-                        stroke-linecap="round"
-                      />
-                    </svg>
-                  </span>
-                  <span class="passenger-picker__main">
-                    <span class="passenger-picker__caption">Số khách</span>
-                    <span
-                      class="passenger-picker__value"
-                      data-placeholder="Chọn số khách"
-                      >Chọn số khách</span
-                    >
-                  </span>
-                  <span class="passenger-picker__caret" aria-hidden="true">
-                    <svg viewBox="0 0 12 8" width="12" height="8" fill="none">
-                      <path
-                        d="M1 1.5 6 6.5 11 1.5"
-                        stroke="currentColor"
-                        stroke-width="1.6"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </span>
-                </button>
-                <div class="passenger-picker__dropdown" hidden>
-                  <ul
-                    class="passenger-picker__list"
-                    role="listbox"
-                    aria-label="Chọn số khách"
-                  ></ul>
-                </div>
+              <label for="tour-passengers">Hành khách</label>
+              <div class="passenger-field">
+                <span class="passenger-field__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+                    <circle
+                      cx="9"
+                      cy="8"
+                      r="3.2"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                    />
+                    <circle
+                      cx="16.5"
+                      cy="10"
+                      r="2.5"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                    />
+                    <path
+                      d="M3.5 19c.8-2.8 3-4.5 5.5-4.5S13.7 16.2 14.5 19M14 17.5c.6-1.8 2.2-3 4-3s3.4 1.2 4 3"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </span>
                 <input
-                  type="hidden"
+                  type="number"
                   id="tour-passengers"
                   name="passengers"
-                  value=""
+                  min="1"
+                  max="99"
+                  step="1"
+                  inputmode="numeric"
+                  placeholder="Nhập số khách"
+                  autocomplete="off"
                 />
               </div>
             </div>
@@ -434,7 +401,6 @@
     <script defer src="../../assets/js/caidat.js"></script>
     <script defer src="../../assets/js/tours/tourPriceDisplay.js"></script>
     <script defer src="../../assets/js/tours/hero-date-picker.js"></script>
-    <script defer src="../../assets/js/tours/hero-passenger-picker.js"></script>
     <script defer src="../../assets/js/tours/dstour.js"></script>
   </body>
 </html>

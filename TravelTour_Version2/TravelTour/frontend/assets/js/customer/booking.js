@@ -117,7 +117,7 @@ function renderUpcomingBookings() {
   if (!upcomingBookings.length) {
     list.innerHTML = `
       <div class="empty-booking">
-        Chưa có booking nào sắp tới. Hãy khám phá và đặt tour ngay!
+        Chưa có chuyến đi đã xác nhận và chờ khởi hành. Tour chờ thanh toán xem tại Lịch sử đặt tour.
       </div>
     `;
     return;

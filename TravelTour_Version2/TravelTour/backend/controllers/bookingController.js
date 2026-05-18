@@ -10,6 +10,7 @@ import {
   getMyBookingsByUser,
   countBookingsByUser,
   getBookingSummaryData,
+  getUserTourBookingEligibility,
 } from "../models/bookingModel.js";
 
 function countTravelersByType(travelers) {
@@ -91,14 +92,8 @@ function mapCustomerBookingStatus(statusRaw) {
   };
 }
 
-const ACTIVE_UPCOMING_STATUSES = new Set([
-  "pending",
-  "pending_payment",
-  "confirmed",
-  "paid",
-  "in_progress",
-  "cancel_requested",
-]);
+/** Chuyến đi sắp tới: đã xác nhận thanh toán, chưa khởi hành. */
+const CONFIRMED_AWAITING_DEPARTURE_STATUSES = new Set(["confirmed", "paid"]);
 
 function getTodayYmdVn() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -119,35 +114,21 @@ function toYmdLocal(value) {
 function isCustomerUpcomingBooking(item, todayYmd) {
   const statusRaw = String(item.statusRaw || "").trim().toLowerCase();
 
-  if (["cancelled", "completed", "refunded"].includes(statusRaw)) {
-    return false;
-  }
-
-  if (!ACTIVE_UPCOMING_STATUSES.has(statusRaw)) {
+  if (!CONFIRMED_AWAITING_DEPARTURE_STATUSES.has(statusRaw)) {
     return false;
   }
 
   const departYmd = toYmdLocal(item.travelDate);
   const returnYmd = toYmdLocal(item.endDate);
 
-  if (returnYmd && returnYmd >= todayYmd) return true;
-  if (departYmd && departYmd >= todayYmd) return true;
+  // Chờ khởi hành: ngày đi hôm nay hoặc tương lai
+  if (departYmd) {
+    return departYmd >= todayYmd;
+  }
 
-  // Đã xác nhận / đã thanh toán nhưng lịch trình chưa gán ngày — vẫn coi là sắp tới
-  if (!departYmd && !returnYmd) return true;
-
-  // Booking còn hiệu lực — hiển thị cho đến khi hoàn thành / hủy (kể cả ngày đi trong quá khứ do lịch cũ)
-  if (
-    [
-      "pending",
-      "pending_payment",
-      "confirmed",
-      "paid",
-      "in_progress",
-      "cancel_requested",
-    ].includes(statusRaw)
-  ) {
-    return true;
+  // Fallback khi thiếu ngày đi: dùng ngày về nếu còn trong tương lai
+  if (returnYmd) {
+    return returnYmd >= todayYmd;
   }
 
   return false;
@@ -176,6 +157,37 @@ function parseDateYYYYMMDD(dateStr) {
   }
 
   return date;
+}
+
+/** Tuổi tại ngày tham chiếu (ngày khởi hành). */
+function ageOnReferenceDate(birthDate, referenceDate) {
+  if (!birthDate || !referenceDate) return null;
+  let age = referenceDate.getFullYear() - birthDate.getFullYear();
+  const m = referenceDate.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && referenceDate.getDate() < birthDate.getDate())) {
+    age -= 1;
+  }
+  return age;
+}
+
+/** Trẻ dưới 7 tuổi (tính đến ngày khởi hành) miễn phí; từ 7 tuổi trở lên tính giá như người lớn. */
+function countBillableTravelersForPricing(travelers, departureYmd) {
+  const ref = parseDateYYYYMMDD(departureYmd);
+  if (!ref || !Array.isArray(travelers)) return 0;
+
+  let billable = 0;
+  for (const t of travelers) {
+    const bd = parseDateYYYYMMDD(t.birth_date);
+    if (!bd) {
+      billable += 1;
+      continue;
+    }
+    const age = ageOnReferenceDate(bd, ref);
+    if (age == null || age >= 7) {
+      billable += 1;
+    }
+  }
+  return billable;
 }
 
 function isFutureDate(date) {
@@ -290,6 +302,50 @@ async function resolveOrCreateSchedule(tourId, scheduleId, departureDate) {
   return insertScheduleResult.insertId;
 }
 
+export const getTourBookingEligibility = async (req, res) => {
+  try {
+    const tourId = Number(req.params.tourId);
+    const userId = req.user?.id;
+
+    if (!tourId) {
+      return res.status(400).json({
+        success: false,
+        message: "Tour ID không hợp lệ",
+      });
+    }
+
+    const eligibility = await getUserTourBookingEligibility(userId, tourId);
+    const existing = eligibility.existingBooking;
+    let existingBooking = null;
+
+    if (existing) {
+      const statusInfo = mapCustomerBookingStatus(existing.status);
+      existingBooking = {
+        ...existing,
+        statusLabel: statusInfo.label,
+      };
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        canBook: Boolean(eligibility.canBook),
+        reason: eligibility.reason || null,
+        message: eligibility.message || null,
+        existingBooking,
+        previousCompleted: eligibility.previousCompleted || null,
+        activeBookingCount: eligibility.activeBookingCount ?? null,
+      },
+    });
+  } catch (error) {
+    console.error("getTourBookingEligibility error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi kiểm tra điều kiện đặt tour",
+    });
+  }
+};
+
 export const confirmBooking = async (req, res) => {
   try {
     const user_id = req.user.id;
@@ -311,6 +367,17 @@ export const confirmBooking = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "tour_id không hợp lệ",
+      });
+    }
+
+    const eligibility = await getUserTourBookingEligibility(user_id, Number(tour_id));
+    if (!eligibility.canBook) {
+      return res.status(409).json({
+        success: false,
+        message:
+          eligibility.message ||
+          "Bạn không thể đặt lại tour này với lịch hiện tại.",
+        reason: eligibility.reason || null,
       });
     }
 
@@ -462,6 +529,18 @@ export const confirmBooking = async (req, res) => {
       });
     }
 
+    const maxCap = Number(tour.max_capacity || 0);
+    const booked = Number(tour.booked_participants || 0);
+    const remainingSlots =
+      maxCap > 0 ? Math.max(0, maxCap - booked) : Number.MAX_SAFE_INTEGER;
+
+    if (maxCap > 0 && totalTravelers > remainingSlots) {
+      return res.status(400).json({
+        success: false,
+        message: `Số khách vượt quá chỗ còn lại. Tour tối đa ${maxCap} người, đã đặt ${booked} — bạn chỉ có thể đặt tối đa ${remainingSlots} khách.`,
+      });
+    }
+
     const basePrice = Number(tour.base_price || 0);
     const salePrice = Number(tour.sale_price || 0);
     const tax = Number(tour.tax || 0);
@@ -484,7 +563,20 @@ export const confirmBooking = async (req, res) => {
       });
     }
 
-    const totalPrice = unitPrice * totalTravelers;
+    const billableGuests = countBillableTravelersForPricing(
+      travelers,
+      departure_date,
+    );
+
+    if (billableGuests < 1) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Cần ít nhất một khách từ 7 tuổi trở lên (theo ngày sinh và ngày khởi hành) để áp dụng giá tour.",
+      });
+    }
+
+    const totalPrice = unitPrice * billableGuests;
 
     const finalPrice =
       Number(final_price) > 0 ? Number(final_price) : totalPrice;
@@ -763,9 +855,19 @@ export const getBookingSummary = async (req, res) => {
     const tourId = Number(req.query.tour_id);
     const departureDate = req.query.departure_date || null;
     const adults = Number(req.query.adults || 0);
-    const children = Number(req.query.children || 0);
+    let childrenUnder7 = Number(req.query.children_under7 ?? NaN);
+    let children7Plus = Number(req.query.children_7plus ?? NaN);
+    const childrenLegacy = Number(req.query.children || 0);
 
-    const totalGuests = adults + children;
+    if (!Number.isFinite(childrenUnder7)) childrenUnder7 = 0;
+    if (!Number.isFinite(children7Plus)) children7Plus = 0;
+
+    if (childrenUnder7 === 0 && children7Plus === 0 && childrenLegacy > 0) {
+      children7Plus = childrenLegacy;
+    }
+
+    const totalGuests = adults + childrenUnder7 + children7Plus;
+    const billableGuests = adults + children7Plus;
 
     if (!tourId) {
       return res.status(400).json({
@@ -781,12 +883,32 @@ export const getBookingSummary = async (req, res) => {
       });
     }
 
+    if (billableGuests < 1) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Cần ít nhất 1 người lớn hoặc trẻ em từ 7 tuổi trở lên để tính giá tour (trẻ dưới 7 tuổi miễn phí).",
+      });
+    }
+
     const tour = await getBookingSummaryData(tourId);
 
     if (!tour) {
       return res.status(404).json({
         success: false,
         message: "Không tìm thấy tour",
+      });
+    }
+
+    const maxCap = Number(tour.max_capacity || 0);
+    const booked = Number(tour.booked_participants || 0);
+    const remainingSlots =
+      maxCap > 0 ? Math.max(0, maxCap - booked) : null;
+
+    if (remainingSlots != null && totalGuests > remainingSlots) {
+      return res.status(400).json({
+        success: false,
+        message: `Số khách vượt quá chỗ còn lại. Tour tối đa ${maxCap} người, đã đặt ${booked} — tối đa ${remainingSlots} khách có thể đặt.`,
       });
     }
 
@@ -808,7 +930,7 @@ export const getBookingSummary = async (req, res) => {
       });
     }
 
-    const tourTotal = pricePerPerson * totalGuests;
+    const tourTotal = pricePerPerson * billableGuests;
     const grandTotal = tourTotal;
 
     return res.status(200).json({
@@ -820,8 +942,14 @@ export const getBookingSummary = async (req, res) => {
         thumbnail_url: tour.thumbnail_url || "",
         departure_date: departureDate,
         adults,
-        children,
+        children: childrenUnder7 + children7Plus,
+        children_under7: childrenUnder7,
+        children_7plus: children7Plus,
         total_guests: totalGuests,
+        billable_guests: billableGuests,
+        max_capacity: maxCap,
+        booked_participants: booked,
+        remaining_slots: remainingSlots,
         price_per_person: pricePerPerson,
         tour_total: tourTotal,
         grand_total: grandTotal,

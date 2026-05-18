@@ -14,6 +14,21 @@
     return sale > 0 && sale < base;
   }
 
+  /** % giảm provider đặt (tính từ base_price → sale_price). */
+  function getDiscountPercent(tour) {
+    if (!hasTourDiscount(tour)) return 0;
+    const base = Number(tour?.base_price || 0);
+    const sale = Number(tour?.sale_price || 0);
+    if (base <= 0) return 0;
+    return Math.round(((base - sale) / base) * 100);
+  }
+
+  function formatDiscountBadgeLabel(tour) {
+    const pct = getDiscountPercent(tour);
+    if (pct <= 0) return "";
+    return `-${pct}%`;
+  }
+
   function getAppliedPrice(tour) {
     const base = Number(tour?.base_price || 0);
     const sale = Number(tour?.sale_price || 0);
@@ -85,14 +100,36 @@
     element.innerHTML = renderPriceHtml(tour, options);
   }
 
+  function getMaxCapacity(tour) {
+    return Math.max(0, Number(tour?.max_capacity || 0));
+  }
+
+  function getBookedParticipants(tour) {
+    return Math.max(0, Number(tour?.booked_participants || 0));
+  }
+
+  /** Ví dụ: "2/20 đã đặt" — rỗng nếu tour chưa có sức chứa tối đa. */
+  function formatCapacityText(tour) {
+    const max = getMaxCapacity(tour);
+    if (max <= 0) return "";
+
+    const booked = getBookedParticipants(tour);
+    return `${booked}/${max} đã đặt`;
+  }
+
   global.TourPriceDisplay = {
     formatTourPriceVnd,
     hasTourDiscount,
+    getDiscountPercent,
+    formatDiscountBadgeLabel,
     getAppliedPrice,
     getTaxAmount,
     getFinalPrice,
     getListPrice,
     renderPriceHtml,
     setPriceElement,
+    getMaxCapacity,
+    getBookedParticipants,
+    formatCapacityText,
   };
 })(typeof window !== "undefined" ? window : globalThis);

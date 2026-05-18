@@ -262,18 +262,35 @@ export async function countBookingsByUser(userId) {
 export const getBookingSummaryData = async (tourId) => {
   const [rows] = await db.execute(
     `
-    SELECT 
-      id,
-      title,
-      location,
-      base_price,
-      sale_price,
-      tax_percent,
-      tax,
-      final_price,
-      thumbnail_url
-    FROM tours
-    WHERE id = ?
+    SELECT
+      t.id,
+      t.title,
+      t.location,
+      t.base_price,
+      t.sale_price,
+      t.tax_percent,
+      t.tax,
+      t.final_price,
+      t.thumbnail_url,
+      t.max_capacity,
+      COALESCE(bp.booked_participants, 0) AS booked_participants
+    FROM tours t
+    LEFT JOIN (
+      SELECT
+        tour_id,
+        COALESCE(
+          SUM(
+            COALESCE(num_adults, 0)
+            + COALESCE(num_children, 0)
+            + COALESCE(num_infants, 0)
+          ),
+          0
+        ) AS booked_participants
+      FROM bookings
+      WHERE status IN ('pending_payment', 'confirmed', 'paid', 'in_progress', 'completed')
+      GROUP BY tour_id
+    ) bp ON bp.tour_id = t.id
+    WHERE t.id = ?
     LIMIT 1
     `,
     [tourId],
@@ -316,3 +333,184 @@ export const getCancelableBookingById = async (bookingId, userId) => {
   const [rows] = await db.execute(sql, [bookingId, userId]);
   return rows[0] || null;
 };
+
+const ACTIVE_BOOKING_STATUSES = [
+  "pending",
+  "pending_payment",
+  "confirmed",
+  "paid",
+  "in_progress",
+  "cancel_requested",
+];
+
+function toYmdFromDb(value) {
+  if (value == null || value === "") return "";
+  const text = String(value).trim();
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const d = new Date(text);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getTodayYmdVn() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+  }).format(new Date());
+}
+
+function mapEligibilityBookingRow(row) {
+  if (!row) return null;
+  return {
+    booking_id: row.id,
+    booking_code: row.booking_code,
+    tour_id: row.tour_id,
+    status: row.status,
+    booking_date: row.booked_at,
+    departure_date: row.departure_date,
+    return_date: row.return_date,
+    num_adults: row.num_adults,
+    num_children: row.num_children,
+    num_infants: row.num_infants,
+    final_price: row.final_price,
+    payment_method: row.payment_method,
+  };
+}
+
+/** Tối đa số đơn đang xử lý cùng một tour mà khách có thể giữ (đặt lần 2 để thêm khách). */
+const MAX_ACTIVE_BOOKINGS_PER_TOUR = 2;
+
+/**
+ * Khách có thể có tối đa MAX_ACTIVE_BOOKINGS_PER_TOUR đơn đang xử lý cho cùng tour.
+ * Đã hoàn thành → chỉ đặt lại khi provider cập nhật start/end tour khác lịch chuyến đã đi.
+ */
+export async function getUserTourBookingEligibility(userId, tourId) {
+  const uid = Number(userId);
+  const tid = Number(tourId);
+  if (!uid || !tid) {
+    return { canBook: true };
+  }
+
+  const [[tourRow]] = await db.query(
+    `SELECT id, start_date, end_date FROM tours WHERE id = ? LIMIT 1`,
+    [tid],
+  );
+  if (!tourRow) {
+    return { canBook: false, reason: "tour_not_found" };
+  }
+
+  const tourStartYmd = toYmdFromDb(tourRow.start_date);
+  const tourEndYmd = toYmdFromDb(tourRow.end_date);
+  const todayYmd = getTodayYmdVn();
+
+  const statusPlaceholders = ACTIVE_BOOKING_STATUSES.map(() => "?").join(", ");
+  const [activeRows] = await db.query(
+    `
+    SELECT
+      b.id,
+      b.tour_id,
+      b.booking_code,
+      b.status,
+      b.booked_at,
+      b.final_price,
+      b.payment_method,
+      b.num_adults,
+      b.num_children,
+      b.num_infants,
+      ts.departure_date,
+      ts.return_date
+    FROM bookings b
+    JOIN tour_schedules ts ON ts.id = b.schedule_id
+    WHERE b.user_id = ? AND b.tour_id = ?
+      AND b.status IN (${statusPlaceholders})
+    ORDER BY b.booked_at DESC, b.id DESC
+    LIMIT ?
+    `,
+    [uid, tid, ...ACTIVE_BOOKING_STATUSES, MAX_ACTIVE_BOOKINGS_PER_TOUR],
+  );
+
+  const activeCount = activeRows.length;
+
+  if (activeCount >= MAX_ACTIVE_BOOKINGS_PER_TOUR) {
+    return {
+      canBook: false,
+      reason: "max_active_bookings",
+      message:
+        "Bạn đã có 2 đơn đặt tour này. Không thể đặt thêm cho đến khi một đơn hoàn tất hoặc được hủy.",
+      existingBooking: mapEligibilityBookingRow(activeRows[0]),
+      activeBookingCount: activeCount,
+    };
+  }
+
+  if (activeCount === 1) {
+    return {
+      canBook: true,
+      reason: "has_active_booking",
+      message:
+        "Bạn đã có 1 đơn đặt tour này. Bạn có thể đặt thêm 1 lần nữa (ví dụ để bổ sung số khách).",
+      existingBooking: mapEligibilityBookingRow(activeRows[0]),
+      activeBookingCount: activeCount,
+    };
+  }
+
+  const [completedRows] = await db.query(
+    `
+    SELECT
+      b.id,
+      b.tour_id,
+      b.booking_code,
+      b.status,
+      b.booked_at,
+      b.final_price,
+      b.payment_method,
+      b.num_adults,
+      b.num_children,
+      b.num_infants,
+      ts.departure_date,
+      ts.return_date
+    FROM bookings b
+    JOIN tour_schedules ts ON ts.id = b.schedule_id
+    WHERE b.user_id = ? AND b.tour_id = ? AND b.status = 'completed'
+    ORDER BY ts.departure_date DESC, b.id DESC
+    LIMIT 1
+    `,
+    [uid, tid],
+  );
+
+  if (!completedRows.length) {
+    return { canBook: true };
+  }
+
+  const last = completedRows[0];
+  const bookedDepart = toYmdFromDb(last.departure_date);
+  const bookedReturn = toYmdFromDb(last.return_date);
+
+  const tourHasFutureStart =
+    tourStartYmd && tourStartYmd >= todayYmd && tourStartYmd !== bookedDepart;
+
+  const tourDatesUpdated =
+    tourHasFutureStart ||
+    (tourEndYmd &&
+      tourEndYmd !== bookedReturn &&
+      tourStartYmd &&
+      tourStartYmd >= todayYmd);
+
+  if (tourDatesUpdated) {
+    return {
+      canBook: true,
+      reason: "new_schedule",
+      previousCompleted: {
+        departure_date: bookedDepart,
+        return_date: bookedReturn,
+      },
+    };
+  }
+
+  return {
+    canBook: false,
+    reason: "completed_same_schedule",
+    message:
+      "Bạn đã hoàn thành tour này. Chỉ có thể đặt lại khi nhà cung cấp cập nhật lịch khởi hành / kết thúc mới.",
+    existingBooking: mapEligibilityBookingRow(last),
+  };
+}

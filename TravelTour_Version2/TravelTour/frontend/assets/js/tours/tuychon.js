@@ -17,6 +17,7 @@
   var summaryGuestLine = document.getElementById("summary-guest-line");
   var summaryTourPrice = document.getElementById("summary-tour-price");
   var summaryGrandTotal = document.getElementById("summary-grand-total");
+  var summaryOptionRows = document.getElementById("summary-option-rows");
   var goBackButton = document.querySelector(".js-go-back");
   var goNextButton = document.querySelector(".js-go-next");
   var toastTimer = null;
@@ -100,25 +101,100 @@
     });
   }
 
+  function getOptionLabelFromInput(input) {
+    var card = input.closest(".option-card");
+    if (!card) return input.value;
+
+    var titleEl = card.querySelector(".option-card__title");
+    if (!titleEl) return input.value;
+
+    var clone = titleEl.cloneNode(true);
+    var small = clone.querySelector("small");
+    if (small) small.remove();
+
+    return clone.textContent.replace(/\s+/g, " ").trim();
+  }
+
+  function getGroupLabelFromInput(input) {
+    var group = input.closest(".option-group");
+    if (!group) return "";
+
+    var h3 = group.querySelector(".option-group__title h3");
+    if (!h3) return "";
+
+    var clone = h3.cloneNode(true);
+    var required = clone.querySelector("span");
+    if (required) required.remove();
+
+    return clone.textContent.replace(/\s+/g, " ").trim();
+  }
+
   function collectOptions() {
     var options = {};
     var extraPrice = 0;
+    var paidSelections = [];
 
     document
       .querySelectorAll('.option-card input[type="radio"]:checked')
       .forEach(function (input) {
         var price = Number(input.dataset.price || 0);
+        var label = getOptionLabelFromInput(input);
+        var groupLabel = getGroupLabelFromInput(input);
+
         options[input.name] = {
           value: input.value,
           price: price,
+          label: label,
+          groupLabel: groupLabel,
         };
+
+        if (price > 0) {
+          paidSelections.push({
+            name: input.name,
+            label: label,
+            groupLabel: groupLabel,
+            price: price,
+          });
+        }
+
         extraPrice += price;
       });
 
     return {
       selections: options,
       extraPrice: extraPrice,
+      paidSelections: paidSelections,
     };
+  }
+
+  function renderSummaryOptionRows(optionData) {
+    if (!summaryOptionRows) return;
+
+    var paid = optionData.paidSelections || [];
+
+    summaryOptionRows.innerHTML = "";
+
+    if (!paid.length) {
+      summaryOptionRows.hidden = true;
+      return;
+    }
+
+    summaryOptionRows.hidden = false;
+
+    paid.forEach(function (item) {
+      var row = document.createElement("div");
+      row.className = "summary-card__row";
+
+      var labelSpan = document.createElement("span");
+      labelSpan.textContent = item.label;
+
+      var priceStrong = document.createElement("strong");
+      priceStrong.textContent = "+" + formatCurrency(item.price);
+
+      row.appendChild(labelSpan);
+      row.appendChild(priceStrong);
+      summaryOptionRows.appendChild(row);
+    });
   }
 
   function persistOptions() {
@@ -146,6 +222,8 @@
     if (summaryGrandTotal) {
       summaryGrandTotal.textContent = formatCurrency(finalTotal);
     }
+
+    renderSummaryOptionRows(optionData);
   }
 
   function formatDate(dateStr) {

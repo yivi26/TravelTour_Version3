@@ -394,8 +394,23 @@ a.logo:active {
 }
 
 .tour-carousel__track .tour-rating {
-  min-height: 48px;
-  margin-bottom: 12px;
+  min-height: auto;
+  margin-bottom: 8px;
+}
+
+.tour-carousel__track .tour-card__stats {
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.tour-carousel__track .tour-card__stats-booking {
+  font-size: 12px;
+  padding: 2px 8px;
+}
+
+.tour-carousel__track .promo-card__stats {
+  margin-top: 8px;
+  margin-bottom: 8px;
 }
 
 .tour-carousel__track .tour-bottom {
@@ -644,18 +659,73 @@ a.logo:active {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   font-size: 14px;
   color: var(--muted);
 }
 
-.tour-rating .reviews {
-  width: auto;
-  max-width: none;
-  text-align: left;
+.tour-rating__location {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.tour-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 4px;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  box-sizing: border-box;
+}
+
+.tour-card__stats-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #4b5563;
+}
+
+.tour-card__stats-item strong {
+  color: #111827;
+  font-weight: 700;
+}
+
+.tour-card__stats-sep {
+  color: #9ca3af;
+  font-weight: 700;
+  user-select: none;
+}
+
+.tour-card__stats-booking {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #10b981;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
   white-space: nowrap;
+}
+
+.promo-card__stats {
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 .tour-bottom {
@@ -703,17 +773,20 @@ a.logo:active {
 
 .tour-bottom .btn-detail {
   position: absolute;
-  right: 0;
-  bottom: 0;
+  right: -24px;
+  bottom: -24px;
+  z-index: 1;
   margin: 0;
-  height: 42px;
-  min-width: 132px;
-  padding: 0 16px;
+  min-height: 48px;
+  height: auto;
+  min-width: 152px;
+  padding: 16px 28px 20px 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
   box-sizing: border-box;
+  border-radius: 48px 0 24px 0;
 }
 
 .destination-bottom .price,
@@ -722,9 +795,47 @@ a.logo:active {
 }
 
 .btn-detail {
-  border-radius: 12px;
-  padding: 10px 18px;
-  line-height: 1.2;
+  border-radius: 48px 0 24px 0;
+  padding: 16px 28px 20px 32px;
+  line-height: 1.25;
+  font-weight: 700;
+  box-shadow: none;
+  border: none;
+  transition: background 0.2s ease, filter 0.2s ease;
+}
+
+.btn-detail:hover {
+  filter: brightness(1.06);
+}
+
+.btn-detail:active {
+  filter: brightness(0.94);
+}
+
+/* Cùng phong cách với nút "Xem chi tiết" trên thẻ ưu đãi */
+.btn.btn-primary.btn-book-now {
+  border-radius: 48px 0 24px 0;
+  padding: 16px 28px 20px 36px;
+  font-weight: 700;
+  box-shadow: none;
+  border: none;
+  transition: background 0.2s ease, filter 0.2s ease;
+}
+
+.btn.btn-primary.btn-book-now:hover {
+  filter: brightness(1.06);
+}
+
+.btn.btn-primary.btn-book-now:active {
+  filter: brightness(0.94);
+}
+
+.promo-content .btn.btn-primary.btn-book-now {
+  align-self: flex-end;
+  margin-right: -24px;
+  margin-bottom: -24px;
+  width: auto;
+  min-width: 152px;
 }
 
 /* Why choose */
@@ -810,6 +921,7 @@ a.logo:active {
 }
 
 .promo-content {
+  position: relative;
   padding: 24px;
   display: flex;
   flex-direction: column;

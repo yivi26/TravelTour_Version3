@@ -184,34 +184,57 @@ function formatDateVi(value) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
-function formatTourPopularityMeta(tour) {
-  const bookingCount = Number(tour?.booking_count || 0);
-  const ratingCount = Number(tour?.rating_count || 0);
-  const ratingAvg = tour?.rating_avg != null ? Number(tour.rating_avg) : null;
+function formatTourCapacityText(tour) {
+  if (typeof TourPriceDisplay !== "undefined" && TourPriceDisplay.formatCapacityText) {
+    return TourPriceDisplay.formatCapacityText(tour);
+  }
 
-  const parts = [];
+  const max = Math.max(0, Number(tour?.max_capacity || 0));
+  if (max <= 0) return "";
+
+  const booked = Math.max(0, Number(tour?.booked_participants || 0));
+  return `${booked}/${max} đã đặt`;
+}
+
+function formatTourCardMetaHtml(tour) {
+  const ratingCount = Number(tour?.rating_count || 0);
+  const ratingAvg =
+    tour?.rating_avg != null
+      ? Number(tour.rating_avg)
+      : tour?.rating != null
+        ? Number(tour.rating)
+        : null;
+
+  const segments = [];
+
   if (ratingAvg != null && ratingCount > 0) {
-    parts.push(`⭐ ${ratingAvg} (${ratingCount})`);
+    segments.push(
+      `<span class="tour-card__stats-item">⭐ <strong>${ratingAvg}</strong> (${ratingCount})</span>`
+    );
+  } else if (ratingAvg != null) {
+    segments.push(
+      `<span class="tour-card__stats-item">⭐ <strong>${ratingAvg}</strong></span>`
+    );
   }
-  if (bookingCount > 0) {
-    parts.push(`${bookingCount} lượt đặt`);
+
+  const capacityText = formatTourCapacityText(tour);
+  if (capacityText) {
+    segments.push(
+      `<span class="tour-card__stats-booking">${capacityText}</span>`
+    );
   }
-  return parts.join(" · ");
+
+  const duration = getDurationText(tour.duration_days);
+  if (duration) {
+    segments.push(`<span class="tour-card__stats-item">⏱ ${duration}</span>`);
+  }
+
+  return segments.join('<span class="tour-card__stats-sep" aria-hidden="true">·</span>');
 }
 
 function buildTourCardHtml(tour) {
-  const appliedPrice = getAppliedPrice(tour);
-  const tax = getTaxAmount(tour);
   const finalPrice = getDisplayPrice(tour);
-  const vatDetailLine =
-    getTaxPercent(tour) > 0 && tax > 0
-      ? `<p class="muted tour-vat-note">
-            Giá áp dụng ${formatCurrency(appliedPrice)} + VAT ${formatCurrency(tax)}
-          </p>`
-      : "";
-  const popularity = formatTourPopularityMeta(tour);
-  const duration = getDurationText(tour.duration_days);
-  const ratingLine = [popularity, duration].filter(Boolean).join(" · ");
+  const tourMetaHtml = formatTourCardMetaHtml(tour);
 
   return `
     <div class="tour-card">
@@ -224,9 +247,13 @@ function buildTourCardHtml(tour) {
         <h3>${tour.title || "Chưa có tên tour"}</h3>
         <p class="muted">${tour.description || "Tour du lịch hấp dẫn từ TravelTour"}</p>
         <div class="tour-rating">
-          <span>📍 ${tour.location || "Chưa cập nhật"}</span>
-          <span class="reviews">${ratingLine}</span>
+          <span class="tour-rating__location">📍 ${tour.location || "Chưa cập nhật"}</span>
         </div>
+        ${
+          tourMetaHtml
+            ? `<p class="tour-card__stats" role="status">${tourMetaHtml}</p>`
+            : ""
+        }
         <div class="tour-bottom">
           <div>
             <p class="muted">Giá từ</p>
@@ -235,7 +262,6 @@ function buildTourCardHtml(tour) {
                 ? TourPriceDisplay.renderPriceHtml(tour)
                 : formatCurrency(finalPrice)
             }</div>
-            ${vatDetailLine}
           </div>
           <button type="button" class="btn btn-primary btn-detail" data-tour-id="${tour.id}">
             Xem chi tiết
@@ -638,6 +664,7 @@ function renderPromotionsFromTours(tours) {
         (tour.description || "").trim() || "Tour du lịch ưu đãi hấp dẫn từ TravelTour";
       const image = getTourImage(tour);
       const finalPrice = getDisplayPrice(tour);
+      const promoMetaHtml = formatTourCardMetaHtml(tour);
 
       return `
       <div class="promo-card" data-tour-id="${tour.id}">
@@ -650,6 +677,11 @@ function renderPromotionsFromTours(tours) {
         <div class="promo-content">
           <h3>${tour.title || "Ưu đãi tour"}</h3>
           <p>${description}</p>
+          ${
+            promoMetaHtml
+              ? `<p class="tour-card__stats promo-card__stats" role="status">${promoMetaHtml}</p>`
+              : ""
+          }
           <div style="margin-top:8px;">
             ${
               typeof TourPriceDisplay !== "undefined"

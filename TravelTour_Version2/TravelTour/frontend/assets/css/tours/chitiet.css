@@ -102,6 +102,7 @@ button {
 .booking-field-group {
   display: flex;
   align-items: center;
+  gap: 14px;
 }
 
 .site-header__left {
@@ -940,6 +941,18 @@ button {
   color: var(--muted);
 }
 
+/* Ô số lượng khách: gọn, không mũi tên spinner */
+.booking-field-group--guests input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.booking-field-group--guests input[type="number"]::-webkit-outer-spin-button,
+.booking-field-group--guests input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 #departure-date::-webkit-calendar-picker-indicator {
   display: none;
   -webkit-appearance: none;
@@ -949,8 +962,21 @@ button {
   display: none;
 }
 
-.booking-field-group {
-  gap: 14px;
+.booking-field-group--guests {
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.booking-field-group--guests .booking-field {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.booking-capacity-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #6b7280;
 }
 
 .booking-field-group .booking-field {

@@ -1,5 +1,9 @@
 // booking_management.js
 
+let allBookings = [];
+let selectedCancelRequestId = null;
+let currentFilter = "all";
+
 const STATUS_LABEL = {
   pending:          "Chờ xử lý",
   pending_payment:  "Thanh toán đang chờ xử lý",
@@ -56,10 +60,47 @@ function formatDate(value) {
   return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+const CARD_BADGE_CLASS = {
+  pending: "badge--pending",
+  pending_payment: "badge--pending",
+  confirmed: "badge--confirmed",
+  cancel_requested: "badge-cancel-request",
+  paid: "badge--paid",
+  in_progress: "badge--in-progress",
+  completed: "badge--completed",
+  cancelled: "badge--cancelled",
+  refunded: "badge--cancelled",
+};
+
 function badgeHtml(status) {
-  const cls  = STATUS_BADGE[status]  || "badge-warning";
-  const text = STATUS_LABEL[status]  || status || "—";
+  const cls = STATUS_BADGE[status] || "badge-warning";
+  const text = STATUS_LABEL[status] || status || "—";
   return `<span class="badge ${cls}">${text}</span>`;
+}
+
+function cardBadgeHtml(status) {
+  const cls = CARD_BADGE_CLASS[status] || STATUS_BADGE[status] || "badge--pending";
+  const text = STATUS_LABEL[status] || status || "—";
+  return `<span class="badge ${cls}">${text}</span>`;
+}
+
+function getCustomerInitials(name) {
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function resolvePaymentStatus(b) {
@@ -111,38 +152,91 @@ function actionHtml(b) {
   return `<div class="actions">${btns}</div>`;
 }
 
-// ───── State ─────
-let allBookings = [];
-let selectedCancelRequestId = null;
-
 // ───── Render ─────
-function renderTable(list) {
-  const tbody = document.getElementById("bookingTableBody");
-  if (!tbody) return;
+function matchesStatusFilter(booking) {
+  const st = booking.booking_status;
+  if (currentFilter === "all") return true;
+  if (currentFilter === "confirmed") return st === "confirmed";
+  if (currentFilter === "paid") return st === "paid";
+  if (currentFilter === "completed") return st === "completed";
+  if (currentFilter === "cancelled") return st === "cancelled" || st === "refunded";
+  return true;
+}
+
+function getFilteredBookings() {
+  const input = document.getElementById("bookingCodeSearchInput");
+  const kw = String(input?.value || "").toLowerCase().trim();
+
+  return allBookings.filter((b) => {
+    const matchesKeyword =
+      !kw ||
+      (b.booking_code || "").toLowerCase().includes(kw) ||
+      (b.customer_name || "").toLowerCase().includes(kw) ||
+      (b.tour_title || "").toLowerCase().includes(kw) ||
+      (b.customer_phone || "").toLowerCase().includes(kw);
+
+    return matchesKeyword && matchesStatusFilter(b);
+  });
+}
+
+function applyFiltersAndRender() {
+  renderBookingList(getFilteredBookings());
+}
+
+function renderBookingCard(b) {
+  const paxLabel = b.total_pax != null ? `${b.total_pax} khách` : "—";
+
+  return `
+    <article class="booking-card">
+      <div class="booking-card__main">
+        <div class="booking-card__avatar" aria-hidden="true">${escapeHtml(getCustomerInitials(b.customer_name))}</div>
+        <div class="booking-card__info">
+          <div class="booking-card__top">
+            <span class="booking-card__code">${escapeHtml(b.booking_code || "—")}</span>
+            ${cardBadgeHtml(b.booking_status)}
+          </div>
+          <div class="booking-card__name-row">
+            <span class="booking-card__name">${escapeHtml(b.customer_name || "—")}</span>
+            ${
+              b.customer_phone
+                ? `<span class="booking-card__phone"><i class="fa-solid fa-phone" aria-hidden="true"></i>${escapeHtml(b.customer_phone)}</span>`
+                : ""
+            }
+          </div>
+          <div class="booking-card__meta">
+            <span class="booking-card__meta-item">
+              <i class="fa-solid fa-ticket" aria-hidden="true"></i>
+              ${escapeHtml(b.tour_title || "—")}
+            </span>
+            <span class="booking-card__meta-item">
+              <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+              ${escapeHtml(formatDate(b.departure_date))}
+            </span>
+            <span class="booking-card__meta-item">
+              <i class="fa-solid fa-user" aria-hidden="true"></i>
+              ${escapeHtml(paxLabel)}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="booking-card__side">
+        <div class="booking-card__price">${escapeHtml(formatCurrency(b.final_price))}</div>
+        <div class="booking-card__actions">${actionHtml(b)}</div>
+      </div>
+    </article>
+  `;
+}
+
+function renderBookingList(list) {
+  const listEl = document.getElementById("bookingList");
+  if (!listEl) return;
 
   if (!list.length) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="8" class="empty-state">Không có dữ liệu booking.</td>
-      </tr>`;
+    listEl.innerHTML = `<div class="empty-state">Không có dữ liệu booking.</div>`;
     return;
   }
 
-  tbody.innerHTML = list.map(b => `
-    <tr>
-      <td class="td-code">${b.booking_code || "—"}</td>
-      <td class="td-customer">
-        <div class="name">${b.customer_name || "—"}</div>
-        <div class="phone">${b.customer_phone || ""}</div>
-      </td>
-      <td class="td-tour">${b.tour_title || "—"}</td>
-      <td>${formatDate(b.departure_date)}</td>
-      <td>${b.total_pax ?? "—"}</td>
-      <td class="td-price">${formatCurrency(b.final_price)}</td>
-      <td>${badgeHtml(b.booking_status)}</td>
-      <td>${actionHtml(b)}</td>
-    </tr>
-  `).join("");
+  listEl.innerHTML = list.map((b) => renderBookingCard(b)).join("");
 }
 
 function renderStats(list) {
@@ -154,31 +248,31 @@ function renderStats(list) {
   const cancelled = list.filter(b => ["cancelled","refunded"].includes(b.booking_status)).length;
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set("totalBookings",     total);
-  set("pendingBookings",   pending);
+  set("totalBookings", total);
+  set("pendingBookings", pending);
   set("confirmedBookings", confirmed);
   set("cancelledBookings", cancelled);
+  set("filterCountAll", total);
 }
 
-// ───── Search ─────
 function bindSearch() {
   const input = document.getElementById("bookingCodeSearchInput");
-  const global = document.getElementById("globalSearchInput");
-
-  function doFilter() {
-    const kw = ((input ? input.value : "") + " " + (global ? global.value : "")).toLowerCase().trim();
-    if (!kw) { renderTable(allBookings); return; }
-    const filtered = allBookings.filter(b =>
-      (b.booking_code    || "").toLowerCase().includes(kw) ||
-      (b.customer_name   || "").toLowerCase().includes(kw) ||
-      (b.tour_title      || "").toLowerCase().includes(kw) ||
-      (b.customer_phone  || "").toLowerCase().includes(kw)
-    );
-    renderTable(filtered);
+  if (input) {
+    input.addEventListener("input", applyFiltersAndRender);
   }
+}
 
-  if (input)  input.addEventListener("input",  doFilter);
-  if (global) global.addEventListener("input", doFilter);
+function bindFilterButtons() {
+  const filterButtons = document.querySelectorAll(".filter-pill[data-filter]");
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      currentFilter = button.dataset.filter || "all";
+      filterButtons.forEach((item) =>
+        item.classList.toggle("is-active", item === button),
+      );
+      applyFiltersAndRender();
+    });
+  });
 }
 
 // ───── API helpers ─────
@@ -364,14 +458,16 @@ async function loadBookings() {
 
     if (!res.ok || !Array.isArray(data)) {
       console.error("API lỗi:", data);
-      document.getElementById("bookingTableBody").innerHTML =
-        `<tr><td colspan="8" class="empty-state">Không thể tải dữ liệu.</td></tr>`;
+      const listEl = document.getElementById("bookingList");
+      if (listEl) {
+        listEl.innerHTML = `<div class="empty-state">Không thể tải dữ liệu.</div>`;
+      }
       return;
     }
 
     allBookings = data;
     renderStats(allBookings);
-    renderTable(allBookings);
+    applyFiltersAndRender();
   } catch (err) {
     console.error("Lỗi tải booking:", err);
   }
@@ -380,4 +476,5 @@ async function loadBookings() {
 document.addEventListener("DOMContentLoaded", () => {
   loadBookings();
   bindSearch();
+  bindFilterButtons();
 });

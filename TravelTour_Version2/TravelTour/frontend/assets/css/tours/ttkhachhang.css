@@ -515,6 +515,11 @@ button {
   border-bottom: 1px solid #edf1f4;
 }
 
+.summary-card__option-rows {
+  display: grid;
+  gap: 18px;
+}
+
 .summary-card__row {
   color: #647083;
   font-size: 1rem;

@@ -412,28 +412,53 @@
                   </label>
                 </div>
 
-                <div class="booking-field-group">
+                <div class="booking-field-group booking-field-group--guests">
                   <label class="booking-field">
-                    <span>Số lượng khách</span>
-                    <select id="adult-count" name="adult-count">
-                      <option value="1">1 người lớn</option>
-                      <option value="2" selected>2 người lớn</option>
-                      <option value="3">3 người lớn</option>
-                      <option value="4">4 người lớn</option>
-                      <option value="5">5 người lớn</option>
-                    </select>
+                    <span>Người lớn</span>
+                    <input
+                      id="adult-count"
+                      name="adult-count"
+                      type="number"
+                      inputmode="numeric"
+                      min="1"
+                      step="1"
+                      value="1"
+                      autocomplete="off"
+                      aria-label="Số người lớn"
+                    />
                   </label>
 
                   <label class="booking-field">
-                    <span>&nbsp;</span>
-                    <select id="child-count" name="child-count">
-                      <option value="0" selected>0 trẻ em</option>
-                      <option value="1">1 trẻ em</option>
-                      <option value="2">2 trẻ em</option>
-                      <option value="3">3 trẻ em</option>
-                    </select>
+                    <span>Trẻ &lt; 7 tuổi (miễn phí)</span>
+                    <input
+                      id="child-under-7-count"
+                      name="child-under-7-count"
+                      type="number"
+                      inputmode="numeric"
+                      min="0"
+                      step="1"
+                      value="0"
+                      autocomplete="off"
+                      aria-label="Số trẻ em dưới 7 tuổi"
+                    />
+                  </label>
+
+                  <label class="booking-field">
+                    <span>Trẻ từ 7 tuổi (tính giá NL)</span>
+                    <input
+                      id="child-7plus-count"
+                      name="child-7plus-count"
+                      type="number"
+                      inputmode="numeric"
+                      min="0"
+                      step="1"
+                      value="0"
+                      autocomplete="off"
+                      aria-label="Số trẻ em từ 7 tuổi trở lên"
+                    />
                   </label>
                 </div>
+                <p class="booking-capacity-hint muted" id="booking-capacity-hint" hidden></p>
 
                 <div class="booking-summary">
                   <div class="booking-summary__row">

@@ -7,6 +7,7 @@ import {
   getBookingHistory,
   getMyBookings,
   getBookingSummary,
+  getTourBookingEligibility,
   cancelBooking,
 } from "../controllers/bookingController.js";
 
@@ -17,6 +18,7 @@ router.get("/recent", authMiddleware, getRecentBookings);
 router.get("/history", authMiddleware, getBookingHistory);
 router.get("/my-bookings", authMiddleware, getMyBookings);
 router.get("/summary", getBookingSummary);
+router.get("/tour/:tourId/eligibility", authMiddleware, getTourBookingEligibility);
 router.patch("/:id/cancel", authMiddleware, cancelBooking);
 router.get("/:id", authMiddleware, getBookingDetail);
 

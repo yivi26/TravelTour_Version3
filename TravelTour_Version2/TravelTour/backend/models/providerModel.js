@@ -22,6 +22,35 @@ function createSlug(text = "") {
     .replace(/-+/g, "-");
 }
 
+/** Số khách đã giữ chỗ (theo booking còn hiệu lực). */
+const BOOKED_PARTICIPANTS_JOIN = `
+    LEFT JOIN (
+      SELECT
+        tour_id,
+        COALESCE(
+          SUM(
+            COALESCE(num_adults, 0)
+            + COALESCE(num_children, 0)
+            + COALESCE(num_infants, 0)
+          ),
+          0
+        ) AS booked_participants
+      FROM bookings
+      WHERE status IN ('pending_payment', 'confirmed', 'paid', 'in_progress', 'completed')
+      GROUP BY tour_id
+    ) bp ON bp.tour_id = t.id
+`;
+
+function attachPublicTourCapacity(row) {
+  const maxCapacity = Math.max(0, Number(row.max_capacity || 0));
+  const bookedParticipants = Math.max(0, Number(row.booked_participants || 0));
+
+  return {
+    max_capacity: maxCapacity,
+    booked_participants: bookedParticipants,
+  };
+}
+
 function resolvePublicTourPricing(row) {
   const basePrice = Number(row.base_price || 0);
   const salePrice = Number(row.sale_price || 0);
@@ -102,10 +131,13 @@ async function isTourSlugExists(providerId, slug, excludeId = null) {
 export async function getToursByProvider(providerId) {
   const [rows] = await db.query(
     `
-    SELECT *
-    FROM tours
-    WHERE provider_id = ?
-    ORDER BY created_at DESC
+    SELECT
+      t.*,
+      COALESCE(bp.booked_participants, 0) AS booked_participants
+    FROM tours t
+    ${BOOKED_PARTICIPANTS_JOIN}
+    WHERE t.provider_id = ?
+    ORDER BY t.created_at DESC
     `,
     [providerId]
   );
@@ -118,9 +150,11 @@ export async function getToursByProvider(providerId) {
     const unlocked = Boolean(row.management_actions_unlocked);
     const actions_locked =
       !unlocked && !canUseTourManagementActions(start_date, end_date);
+    const bookedParticipants = Math.max(0, Number(row.booked_participants || 0));
 
     return {
       ...row,
+      booked_participants: bookedParticipants,
       start_date,
       end_date,
       tour_phase,
@@ -1934,6 +1968,7 @@ export async function getPublicFeaturedTours(limit = 10) {
       t.created_at,
       p.company_name AS provider_name,
       COALESCE(bc.booking_count, 0) AS booking_count,
+      COALESCE(bp.booked_participants, 0) AS booked_participants,
       COALESCE(rv.rating_avg, 0) AS rating_avg,
       COALESCE(rv.rating_count, 0) AS rating_count,
       (
@@ -1942,6 +1977,7 @@ export async function getPublicFeaturedTours(limit = 10) {
       ) AS popularity_score
     FROM tours t
     LEFT JOIN providers p ON t.provider_id = p.id
+    ${BOOKED_PARTICIPANTS_JOIN}
     INNER JOIN (
       SELECT tour_id, COUNT(*) AS booking_count
       FROM bookings
@@ -1979,6 +2015,7 @@ export async function getPublicFeaturedTours(limit = 10) {
     return {
       ...row,
       ...pricing,
+      ...attachPublicTourCapacity(row),
       booking_count: bookingCount,
       rating_count: ratingCount,
       rating_avg: ratingCount > 0 ? Math.round(ratingAvg * 10) / 10 : null,
@@ -2018,10 +2055,12 @@ export async function getPublicTours(filters = {}) {
       p.company_name AS provider_name,
       tcm.category_id,
       COALESCE(bc.booking_count, 0) AS booking_count,
+      COALESCE(bp.booked_participants, 0) AS booked_participants,
       COALESCE(rv.rating_avg, 0) AS rating_avg,
       COALESCE(rv.rating_count, 0) AS rating_count
     FROM tours t
     LEFT JOIN providers p ON t.provider_id = p.id
+    ${BOOKED_PARTICIPANTS_JOIN}
     LEFT JOIN (
       SELECT tour_id, MIN(category_id) AS category_id
       FROM tour_category_map
@@ -2069,6 +2108,7 @@ export async function getPublicTours(filters = {}) {
       tax: pricing.tax,
       final_price: pricing.final_price,
       display_price: pricing.final_price,
+      ...attachPublicTourCapacity(row),
       booking_count: bookingCount,
       rating_count: ratingCount,
       rating_avg: ratingCount > 0 ? Math.round(ratingAvg * 10) / 10 : null,
@@ -2091,14 +2131,29 @@ export async function getPublicDiscountedTours(limit = 6) {
       t.tax_percent,
       t.tax,
       t.final_price,
+      t.duration_days,
+      t.max_capacity,
       t.thumbnail_url,
       t.start_date,
       t.end_date,
       t.status,
       t.created_at,
-      p.company_name AS provider_name
+      p.company_name AS provider_name,
+      COALESCE(bp.booked_participants, 0) AS booked_participants,
+      COALESCE(rv.rating_avg, 0) AS rating_avg,
+      COALESCE(rv.rating_count, 0) AS rating_count
     FROM tours t
     LEFT JOIN providers p ON t.provider_id = p.id
+    ${BOOKED_PARTICIPANTS_JOIN}
+    LEFT JOIN (
+      SELECT
+        tour_id,
+        AVG(rating) AS rating_avg,
+        COUNT(*) AS rating_count
+      FROM reviews
+      WHERE status = 'approved'
+      GROUP BY tour_id
+    ) rv ON rv.tour_id = t.id
     WHERE t.status = 'active'
       AND t.sale_price > 0
       AND t.sale_price < t.base_price
@@ -2108,9 +2163,18 @@ export async function getPublicDiscountedTours(limit = 6) {
     [Number(limit)]
   );
 
-  return rows.map(row => {
+  return rows.map((row) => {
     const pricing = resolvePublicTourPricing(row);
-    return { ...row, ...pricing };
+    const ratingAvg = Number(row.rating_avg || 0);
+    const ratingCount = Number(row.rating_count || 0);
+
+    return {
+      ...row,
+      ...pricing,
+      ...attachPublicTourCapacity(row),
+      rating_count: ratingCount,
+      rating_avg: ratingCount > 0 ? Math.round(ratingAvg * 10) / 10 : null,
+    };
   });
 }
 
@@ -2147,9 +2211,11 @@ export async function getPublicTourById(tourId) {
       t.other_notes,
       t.status,
       t.created_at,
-      p.company_name AS provider_name
+      p.company_name AS provider_name,
+      COALESCE(bp.booked_participants, 0) AS booked_participants
     FROM tours t
     LEFT JOIN providers p ON t.provider_id = p.id
+    ${BOOKED_PARTICIPANTS_JOIN}
     WHERE t.id = ?
       AND t.status = 'active'
     LIMIT 1
@@ -2175,6 +2241,7 @@ export async function getPublicTourById(tourId) {
   return {
     ...tour,
     ...pricing,
+    ...attachPublicTourCapacity(tour),
     cancel_policy: tour.cancel_policy || "",
     terms_conditions: tour.terms_conditions || "",
     other_notes: tour.other_notes || "",

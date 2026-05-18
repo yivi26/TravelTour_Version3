@@ -85,11 +85,6 @@
 
     <main class="main-content">
       <header class="header">
-        <div class="search-bar">
-          <i class="fa-solid fa-search"></i>
-          <input id="searchInput" type="text" placeholder="Tìm kiếm..." />
-        </div>
-
         <div class="user-area">
           <div class="bell">
             <i class="fa-regular fa-bell"></i>
@@ -107,56 +102,98 @@
       </header>
 
       <div class="page-header">
-        <div>
-          <h2>Quản lý tour</h2>
-          <p>Quản lý danh sách tour du lịch</p>
+        <div class="page-header__text">
+          <h2>
+            <span class="page-header__icon" aria-hidden="true">
+              <i class="fa-solid fa-map"></i>
+            </span>
+            Quản lý tour
+          </h2>
+          <p>Quản lý danh sách tour du lịch của bạn</p>
         </div>
 
-        <button class="btn-primary" id="createTourBtn">
+        <button class="btn-create" id="createTourBtn" type="button">
           <i class="fa-solid fa-plus"></i>
           <span>Tạo tour mới</span>
         </button>
       </div>
 
       <section class="stats-grid">
-        <div class="stat-card">
-          <div class="title">Tổng tour</div>
-          <div class="value val-dark" id="totalTours">0</div>
+        <article class="stat-card">
+          <div class="stat-card__head">
+            <span class="stat-card__icon stat-card__icon--total">
+              <i class="fa-solid fa-map"></i>
+            </span>
+            <span class="stat-card__title">Tổng tour</span>
+          </div>
+          <div class="stat-card__value" id="totalTours">0</div>
+          <p class="stat-card__hint">Tất cả trạng thái</p>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-card__head">
+            <span class="stat-card__icon stat-card__icon--active">
+              <i class="fa-solid fa-circle-check"></i>
+            </span>
+            <span class="stat-card__title">Đang hoạt động</span>
+          </div>
+          <div class="stat-card__value stat-card__value--green" id="activeTours">0</div>
+          <p class="stat-card__hint">Vẫn nhận khách</p>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-card__head">
+            <span class="stat-card__icon stat-card__icon--full">
+              <i class="fa-solid fa-users"></i>
+            </span>
+            <span class="stat-card__title">Đã đầy chỗ</span>
+          </div>
+          <div class="stat-card__value stat-card__value--full" id="fullTours">0</div>
+          <p class="stat-card__hint">Không còn slot</p>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-card__head">
+            <span class="stat-card__icon stat-card__icon--stopped">
+              <i class="fa-solid fa-ban"></i>
+            </span>
+            <span class="stat-card__title">Ngưng hoạt động</span>
+          </div>
+          <div class="stat-card__value" id="stoppedTours">0</div>
+          <p class="stat-card__hint">Tạm dừng / nháp</p>
+        </article>
+      </section>
+
+      <section class="tour-toolbar">
+        <div class="tour-search">
+          <i class="fa-solid fa-search" aria-hidden="true"></i>
+          <input
+            id="searchInput"
+            type="search"
+            placeholder="Tìm kiếm tour theo tên hoặc điểm đến..."
+          />
         </div>
 
-        <div class="stat-card">
-          <div class="title">Đang hoạt động</div>
-          <div class="value val-green" id="activeTours">0</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="title">Đã đầy chỗ</div>
-          <div class="value val-orange" id="fullTours">0</div>
-        </div>
-
-        <div class="stat-card">
-          <div class="title">Ngưng hoạt động</div>
-          <div class="value val-dark" id="stoppedTours">0</div>
+        <div class="tour-filters" role="group" aria-label="Lọc trạng thái tour">
+          <button type="button" class="filter-pill is-active" data-filter="all">
+            Tất cả
+          </button>
+          <button type="button" class="filter-pill" data-filter="active">
+            <span class="filter-dot filter-dot--green" aria-hidden="true"></span>
+            Đang mở
+          </button>
+          <button type="button" class="filter-pill" data-filter="almost-full">
+            <span class="filter-dot filter-dot--yellow" aria-hidden="true"></span>
+            Sắp đầy
+          </button>
+          <button type="button" class="filter-pill" data-filter="full">
+            <span class="filter-dot filter-dot--red" aria-hidden="true"></span>
+            Đầy chỗ
+          </button>
         </div>
       </section>
 
-      <section class="table-container">
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Tên tour</th>
-                <th>Điểm đến</th>
-                <th>Giá</th>
-                <th>Số chỗ</th>
-                <th>Trạng thái</th>
-                <th>Hành động</th>
-              </tr>
-            </thead>
-            <tbody id="tourTableBody"></tbody>
-          </table>
-        </div>
-      </section>
+      <section class="tour-list" id="tourList" aria-live="polite"></section>
     </main>
 
     <div

@@ -1,4 +1,8 @@
 let toursData = [];
+let currentFilter = "all";
+
+/** Tỷ lệ đặt chỗ (%) từ đây trở lên coi là “sắp đầy” (vàng), chưa hết chỗ. */
+const ALMOST_FULL_MIN_PERCENT = 51;
 
 function normalizeDateKey(value) {
   if (value == null || value === "") return "";
@@ -102,7 +106,7 @@ async function loadTours() {
 
     toursData = tours;
 
-    renderTable(tours);
+    applyFiltersAndRender();
     renderStats(tours);
   } catch (err) {
     console.error("Lỗi load tours:", err);
@@ -113,51 +117,150 @@ async function loadTours() {
 // =========================================
 // 📊 HIỂN THỊ TABLE
 // =========================================
-function renderTable(data) {
-  const tbody = document.getElementById("tourTableBody");
-  if (!tbody) return;
+function formatTourCapacityCell(tour) {
+  const max = Math.max(0, Number(tour?.max_capacity || 0));
+  const booked = Math.max(0, Number(tour?.booked_participants || 0));
+  return `${booked}/${max} khách`;
+}
 
-  tbody.innerHTML = "";
+function getTourCapacityPercent(tour) {
+  const max = Math.max(0, Number(tour?.max_capacity || 0));
+  const booked = Math.max(0, Number(tour?.booked_participants || 0));
+  if (max <= 0) return 0;
+  return Math.min(100, Math.round((booked / max) * 100));
+}
+
+function getTourCapacityMetrics(tour) {
+  const max = Math.max(0, Number(tour?.max_capacity || 0));
+  const booked = Math.max(0, Number(tour?.booked_participants || 0));
+  const percent = getTourCapacityPercent(tour);
+  const isCapacityFull = max > 0 && booked >= max;
+  return { max, booked, percent, isCapacityFull };
+}
+
+function isTourFullyBooked(tour) {
+  if (tour?.status === "full") return true;
+  return getTourCapacityMetrics(tour).isCapacityFull;
+}
+
+/** Tour đang mở nhận khách, còn slot nhưng đã đạt ngưỡng “sắp đầy”. */
+function isTourAlmostFullForFilter(tour) {
+  if (!tour || tour.status !== "active") return false;
+  const { max, booked, percent, isCapacityFull } = getTourCapacityMetrics(tour);
+  if (max <= 0 || isCapacityFull) return false;
+  return percent >= ALMOST_FULL_MIN_PERCENT;
+}
+
+function getTourThumbIcon(location) {
+  const text = String(location || "").toLowerCase();
+  if (/biển|đảo|beach|sea/.test(text)) return "fa-ship";
+  if (/núi|rừng|forest|mountain/.test(text)) return "fa-tree";
+  if (/hồ|sông|lake|river/.test(text)) return "fa-water";
+  return "fa-building-columns";
+}
+
+function getProgressBarClass(tour) {
+  if (
+    tour?.status === "paused" ||
+    tour?.status === "draft" ||
+    tour?.status === "archived"
+  ) {
+    return "tour-card__progress-bar--grey";
+  }
+  const { max, booked, percent, isCapacityFull } = getTourCapacityMetrics(tour);
+  if (tour?.status === "full" || isCapacityFull) {
+    return "tour-card__progress-bar--red";
+  }
+  if (max > 0 && booked < max && percent >= ALMOST_FULL_MIN_PERCENT) {
+    return "tour-card__progress-bar--yellow";
+  }
+  return "tour-card__progress-bar--green";
+}
+
+function getFilteredTours() {
+  const keyword = String(searchInput?.value || "").toLowerCase().trim();
+
+  return toursData.filter((t) => {
+    const matchesKeyword =
+      !keyword ||
+      String(t.title || "").toLowerCase().includes(keyword) ||
+      String(t.location || "").toLowerCase().includes(keyword);
+
+    const matchesFilter =
+      currentFilter === "all" ||
+      (currentFilter === "active" && t.status === "active") ||
+      (currentFilter === "almost-full" && isTourAlmostFullForFilter(t)) ||
+      (currentFilter === "full" && isTourFullyBooked(t));
+
+    return matchesKeyword && matchesFilter;
+  });
+}
+
+function applyFiltersAndRender() {
+  renderTourList(getFilteredTours());
+}
+
+function renderTourList(data) {
+  const listEl = document.getElementById("tourList");
+  if (!listEl) return;
+
+  listEl.innerHTML = "";
 
   if (!Array.isArray(data) || data.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align:center;">Không có tour nào</td>
-      </tr>
-    `;
+    listEl.innerHTML = `<div class="empty-state">Không có tour nào</div>`;
     return;
   }
 
-  data.forEach((t) => {
-    const locked = isTourActionsLocked(t);
-    const showUnlock = isTourActionsLockable(t);
-    const showLock = isTourActionsRelockable(t);
-    const lockTitle = locked ? escapeHtml(getTourActionsLockedMessage(t)) : "";
-    const disabledAttr = locked ? " disabled" : "";
-    const lockedClass = locked ? " tour-mgmt-action-btn--locked" : "";
-    const constraintBtn = showUnlock
-      ? `<button type="button" class="tour-mgmt-action-btn tour-mgmt-action-btn--unlock" onclick="unlockTourActions(${t.id})" title="Mở ràng buộc sửa, xóa, đổi trạng thái"><i class="fa-solid fa-lock-open" aria-hidden="true"></i></button>`
-      : showLock
-        ? `<button type="button" class="tour-mgmt-action-btn tour-mgmt-action-btn--lock" onclick="lockTourActions(${t.id})" title="Ràng buộc lại sửa, xóa, đổi trạng thái"><i class="fa-solid fa-lock" aria-hidden="true"></i></button>`
-        : "";
+  listEl.innerHTML = data.map((t) => renderTourCard(t)).join("");
+}
 
-    tbody.innerHTML += `
-      <tr>
-        <td>${escapeHtml(t.title || "")}</td>
-        <td>${escapeHtml(t.location || "")}</td>
-        <td>${formatMoney(t.display_price ?? t.final_price ?? t.base_price)}</td>
-        <td>${Number(t.max_capacity || 0)}</td>
-        <td>${renderStatus(t.status)}</td>
-        <td class="tour-mgmt-actions">
-          <button type="button" class="tour-mgmt-action-btn tour-mgmt-action-btn--progress" onclick="viewTourProgress(${t.id})" title="Xem tiến độ HDV cập nhật"><i class="fa-solid fa-clipboard-list"></i></button>
+function renderTourCard(t) {
+  const locked = isTourActionsLocked(t);
+  const showUnlock = isTourActionsLockable(t);
+  const showLock = isTourActionsRelockable(t);
+  const lockTitle = locked ? escapeHtml(getTourActionsLockedMessage(t)) : "";
+  const disabledAttr = locked ? " disabled" : "";
+  const lockedClass = locked ? " tour-mgmt-action-btn--locked" : "";
+  const constraintBtn = showUnlock
+    ? `<button type="button" class="tour-mgmt-action-btn tour-mgmt-action-btn--unlock" onclick="unlockTourActions(${t.id})" title="Mở ràng buộc sửa, xóa, đổi trạng thái"><i class="fa-solid fa-lock-open" aria-hidden="true"></i></button>`
+    : showLock
+      ? `<button type="button" class="tour-mgmt-action-btn tour-mgmt-action-btn--lock" onclick="lockTourActions(${t.id})" title="Ràng buộc lại sửa, xóa, đổi trạng thái"><i class="fa-solid fa-lock" aria-hidden="true"></i></button>`
+      : "";
+  const percent = getTourCapacityPercent(t);
+  const progressClass = getProgressBarClass(t);
+  const statusMeta = getStatusMeta(t.status);
+
+  return `
+    <article class="tour-card">
+      <div class="tour-card__main">
+        <div class="tour-card__thumb" aria-hidden="true">
+          <i class="fa-solid ${getTourThumbIcon(t.location)}"></i>
+        </div>
+        <div class="tour-card__info">
+          <h3 class="tour-card__title">${escapeHtml(t.title || "")}</h3>
+          <p class="tour-card__location">
+            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+            ${escapeHtml(t.location || "Chưa có điểm đến")}
+          </p>
+          <span class="tour-card__badge ${statusMeta.className}">${escapeHtml(statusMeta.label)}</span>
+        </div>
+      </div>
+      <div class="tour-card__side">
+        <div class="tour-card__price">${escapeHtml(formatMoney(t.display_price ?? t.final_price ?? t.base_price))}</div>
+        <div class="tour-card__capacity">${escapeHtml(formatTourCapacityCell(t))}</div>
+        <div class="tour-card__progress" role="progressbar" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100">
+          <div class="tour-card__progress-bar ${progressClass}" style="width: ${percent}%"></div>
+        </div>
+        <div class="tour-card__actions">
+          <button type="button" class="tour-mgmt-action-btn tour-mgmt-action-btn--progress" onclick="viewTourProgress(${t.id})" title="Xem tiến độ HDV cập nhật"><i class="fa-regular fa-eye" aria-hidden="true"></i></button>
           ${constraintBtn}
-          <button type="button" class="tour-mgmt-action-btn${lockedClass}"${disabledAttr} onclick="editTour(${t.id})" title="${locked ? lockTitle : "Chỉnh sửa"}">✏️</button>
-          <button type="button" class="tour-mgmt-action-btn${lockedClass}"${disabledAttr} onclick="deleteTour(${t.id})" title="${locked ? lockTitle : "Xóa"}">🗑️</button>
-          <button type="button" class="tour-mgmt-action-btn${lockedClass}"${disabledAttr} onclick="toggleStatus(${t.id}, '${String(t.status || "").replace(/'/g, "\\'")}')" title="${locked ? lockTitle : "Đổi trạng thái"}">🔄</button>
-        </td>
-      </tr>
-    `;
-  });
+          <button type="button" class="tour-mgmt-action-btn tour-mgmt-action-btn--edit${lockedClass}"${disabledAttr} onclick="editTour(${t.id})" title="${locked ? lockTitle : "Chỉnh sửa"}"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
+          <button type="button" class="tour-mgmt-action-btn tour-mgmt-action-btn--status${lockedClass}"${disabledAttr} onclick="toggleStatus(${t.id}, '${String(t.status || "").replace(/'/g, "\\'")}')" title="${locked ? lockTitle : "Đổi trạng thái"}"><i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i></button>
+          <button type="button" class="tour-mgmt-action-btn tour-mgmt-action-btn--delete${lockedClass}"${disabledAttr} onclick="deleteTour(${t.id})" title="${locked ? lockTitle : "Xóa"}"><i class="fa-regular fa-trash-can" aria-hidden="true"></i></button>
+        </div>
+      </div>
+    </article>
+  `;
 }
 
 // =========================================
@@ -195,15 +298,19 @@ function renderStats(data) {
 const searchInput = document.getElementById("searchInput");
 
 if (searchInput) {
-  searchInput.addEventListener("input", e => {
-    const keyword = String(e.target.value || "").toLowerCase().trim();
+  searchInput.addEventListener("input", () => {
+    applyFiltersAndRender();
+  });
+}
 
-    const filtered = toursData.filter(t =>
-      String(t.title || "").toLowerCase().includes(keyword) ||
-      String(t.location || "").toLowerCase().includes(keyword)
-    );
-
-    renderTable(filtered);
+function bindFilterButtons() {
+  const filterButtons = document.querySelectorAll(".filter-pill[data-filter]");
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      currentFilter = button.dataset.filter || "all";
+      filterButtons.forEach((item) => item.classList.toggle("is-active", item === button));
+      applyFiltersAndRender();
+    });
   });
 }
 
@@ -358,16 +465,19 @@ async function toggleStatus(id, currentStatus) {
 // =========================================
 // 🎨 HIỂN THỊ STATUS
 // =========================================
-function renderStatus(status) {
+function getStatusMeta(status) {
   const map = {
-    active: "🟢 Đang hoạt động",
-    paused: "🟡 Tạm dừng",
-    draft: "⚪ Nháp",
-    archived: "🔴 Ngưng",
-    full: "🔵 Đã đầy"
+    active: { label: "Đang hoạt động", className: "tour-card__badge--active" },
+    full: { label: "Đầy chỗ", className: "tour-card__badge--full" },
+    paused: { label: "Tạm dừng", className: "tour-card__badge--paused" },
+    draft: { label: "Nháp", className: "tour-card__badge--draft" },
+    archived: { label: "Ngưng", className: "tour-card__badge--archived" },
   };
 
-  return map[status] || escapeHtml(String(status || ""));
+  return map[status] || {
+    label: String(status || "Không rõ"),
+    className: "tour-card__badge--draft",
+  };
 }
 
 // =========================================
@@ -526,4 +636,5 @@ function bindProgressModalEvents() {
 // 🚀 INIT
 // =========================================
 bindProgressModalEvents();
+bindFilterButtons();
 loadTours();

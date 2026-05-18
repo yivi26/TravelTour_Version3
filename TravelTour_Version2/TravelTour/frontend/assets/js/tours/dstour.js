@@ -26,15 +26,13 @@ const destinationInput =
   document.querySelector('.search-box input[type="text"]') ||
   document.querySelector('input[name="destination"]');
 
-const passengerSelect = document.getElementById("tour-passengers");
+const passengerInput = document.getElementById("tour-passengers");
 const departureDateInput = document.getElementById("tour-departure-date");
 const datePickerRoot = document.getElementById("tour-date-picker");
-const passengerPickerRoot = document.getElementById("tour-passenger-picker");
 
 const searchButton = document.querySelector(".btn-search");
 
 let heroDatePicker = null;
-let heroPassengerPicker = null;
 
 let priceValue = document.getElementById("price-value");
 
@@ -123,6 +121,54 @@ function getDurationText(tour) {
   const days = Number(tour.duration_days || 1);
   if (days <= 1) return "1 ngày";
   return `${days} ngày ${days - 1} đêm`;
+}
+
+function formatTourCapacityText(tour) {
+  if (typeof TourPriceDisplay !== "undefined" && TourPriceDisplay.formatCapacityText) {
+    return TourPriceDisplay.formatCapacityText(tour);
+  }
+
+  const max = Math.max(0, Number(tour?.max_capacity || 0));
+  if (max <= 0) return "";
+
+  const booked = Math.max(0, Number(tour?.booked_participants || 0));
+  return `${booked}/${max} đã đặt`;
+}
+
+function formatTourCardMetaHtml(tour) {
+  const ratingCount = Number(tour?.rating_count || 0);
+  const ratingAvg =
+    tour?.rating_avg != null
+      ? Number(tour.rating_avg)
+      : tour?.rating != null
+        ? Number(tour.rating)
+        : null;
+
+  const segments = [];
+
+  if (ratingAvg != null && ratingCount > 0) {
+    segments.push(
+      `<span class="tour-card__stats-item">⭐ <strong>${ratingAvg}</strong> (${ratingCount})</span>`
+    );
+  } else if (ratingAvg != null) {
+    segments.push(
+      `<span class="tour-card__stats-item">⭐ <strong>${ratingAvg}</strong></span>`
+    );
+  }
+
+  const capacityText = formatTourCapacityText(tour);
+  if (capacityText) {
+    segments.push(
+      `<span class="tour-card__stats-booking">${capacityText}</span>`
+    );
+  }
+
+  const duration = getDurationText(tour);
+  if (duration) {
+    segments.push(`<span class="tour-card__stats-item">⏱ ${duration}</span>`);
+  }
+
+  return segments.join('<span class="tour-card__stats-sep" aria-hidden="true">·</span>');
 }
 
 function getTourImage(tour) {
@@ -304,10 +350,23 @@ function matchDepartureDate(tour, selectedYmd) {
 }
 
 function getPassengerMinimum() {
-  const raw = passengerSelect?.value || "";
+  if (!passengerInput) return 0;
+  const raw = String(passengerInput.value || "").trim();
   if (!raw) return 0;
-  const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? n : 0;
+  const n = Math.floor(Number(raw));
+  if (!Number.isFinite(n) || n < 1) return 0;
+  return Math.min(99, n);
+}
+
+function normalizePassengerInputValue() {
+  if (!passengerInput) return "";
+  const n = getPassengerMinimum();
+  if (!n) {
+    passengerInput.value = "";
+    return "";
+  }
+  passengerInput.value = String(n);
+  return String(n);
 }
 
 function matchPassengers(tour, minPassengers) {
@@ -331,12 +390,9 @@ function readSearchFromUrl() {
   }
 
   const passengersParam = params.get("passengers");
-  if (passengersParam) {
-    if (heroPassengerPicker) {
-      heroPassengerPicker.setValue(passengersParam, true);
-    } else if (passengerSelect) {
-      passengerSelect.value = passengersParam;
-    }
+  if (passengersParam && passengerInput) {
+    passengerInput.value = passengersParam;
+    normalizePassengerInputValue();
   }
 }
 
@@ -344,7 +400,8 @@ function syncSearchToUrl() {
   const params = new URLSearchParams();
   const destination = destinationInput?.value.trim() || "";
   const date = getSelectedDepartureDate();
-  const passengers = passengerSelect?.value || "";
+  const minPassengers = getPassengerMinimum();
+  const passengers = minPassengers ? String(minPassengers) : "";
 
   if (destination) params.set("destination", destination);
   if (date) params.set("date", date);
@@ -606,11 +663,22 @@ function renderTours(tours) {
           ? TourPriceDisplay.hasTourDiscount(tour)
           : Number(tour.sale_price || 0) > 0 &&
             Number(tour.sale_price) < Number(tour.base_price || 0);
+      const discountLabel =
+        typeof TourPriceDisplay !== "undefined"
+          ? TourPriceDisplay.formatDiscountBadgeLabel(tour)
+          : hasDiscount
+            ? `-${Math.round(
+                ((Number(tour.base_price) - Number(tour.sale_price)) /
+                  Number(tour.base_price)) *
+                  100,
+              )}%`
+            : "";
       const priceHtml =
         typeof TourPriceDisplay !== "undefined"
           ? TourPriceDisplay.renderPriceHtml(tour, { showUnit: true })
           : `<span class="tour-price-pair__current">${formatCurrency(getTourPrice(tour))}</span><span class="tour-price-pair__unit">/ người</span>`;
       const isFavorite = isFavoriteTour(tour.id);
+      const tourMetaHtml = formatTourCardMetaHtml(tour);
 
       return `
         <article class="tour-card ${isFavorite ? "is-favorite-card" : ""}">
@@ -639,7 +707,11 @@ function renderTours(tours) {
               </svg>
             </button>
 
-            ${hasDiscount ? `<span class="tour-card__badge">Giảm giá</span>` : ""}
+            ${
+              discountLabel
+                ? `<span class="tour-card__badge">${discountLabel}</span>`
+                : ""
+            }
             ${isFavorite ? `<span class="tour-card__pin">Đã yêu thích</span>` : ""}
           </div>
 
@@ -656,6 +728,12 @@ function renderTours(tours) {
 
             <h3>${tour.title || "Chưa có tên tour"}</h3>
 
+            ${
+              tourMetaHtml
+                ? `<p class="tour-card__stats" role="status">${tourMetaHtml}</p>`
+                : ""
+            }
+
             <p class="tour-card__desc">${tour.description || "Chưa có mô tả tour."}</p>
 
             <p class="tour-card__provider">
@@ -668,9 +746,6 @@ function renderTours(tours) {
                 <div class="tour-card__vat">Đã gồm VAT/phí bắt buộc</div>
               </div>
 
-              <div class="tour-card__duration">
-                ⏱ ${getDurationText(tour)}
-              </div>
             </div>
 
             <button
@@ -753,6 +828,7 @@ if (priceSlider) {
 
 if (searchButton) {
   searchButton.addEventListener("click", () => {
+    normalizePassengerInputValue();
     applyFilters(true);
     syncSearchToUrl();
     document.querySelector(".results-section")?.scrollIntoView({
@@ -764,6 +840,17 @@ if (searchButton) {
 
 if (destinationInput) {
   destinationInput.addEventListener("input", () => applyFilters(true));
+}
+
+if (passengerInput) {
+  passengerInput.addEventListener("input", () => applyFilters(true));
+  passengerInput.addEventListener("change", () => {
+    normalizePassengerInputValue();
+    applyFilters(true);
+  });
+  passengerInput.addEventListener("blur", () => {
+    normalizePassengerInputValue();
+  });
 }
 
 if (sortSelect) {
@@ -802,10 +889,8 @@ if (resetButton) {
       departureDateInput.value = "";
     }
 
-    if (heroPassengerPicker) {
-      heroPassengerPicker.setValue("", true);
-    } else if (passengerSelect) {
-      passengerSelect.value = "";
+    if (passengerInput) {
+      passengerInput.value = "";
     }
 
     if (sortSelect) {

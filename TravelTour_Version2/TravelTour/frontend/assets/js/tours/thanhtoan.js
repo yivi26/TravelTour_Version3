@@ -183,6 +183,57 @@
     }, 2200);
   }
 
+  function getPaidSelectionsFromOptions(options) {
+    var selections =
+      options && options.selections ? options.selections : {};
+    var paid = [];
+
+    Object.keys(selections).forEach(function (groupName) {
+      var item = selections[groupName];
+      var price = Number(item && item.price ? item.price : 0);
+
+      if (price > 0) {
+        paid.push({
+          name: groupName,
+          label: (item && item.label) || groupName,
+          groupLabel: (item && item.groupLabel) || "",
+          price: price,
+        });
+      }
+    });
+
+    return paid;
+  }
+
+  function renderSummaryOptionRows(paidSelections) {
+    var container = document.getElementById("summary-option-rows");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (!paidSelections.length) {
+      container.hidden = true;
+      return;
+    }
+
+    container.hidden = false;
+
+    paidSelections.forEach(function (item) {
+      var row = document.createElement("div");
+      row.className = "summary-card__row";
+
+      var labelSpan = document.createElement("span");
+      labelSpan.textContent = item.label;
+
+      var priceStrong = document.createElement("strong");
+      priceStrong.textContent = "+" + formatCurrency(item.price);
+
+      row.appendChild(labelSpan);
+      row.appendChild(priceStrong);
+      container.appendChild(row);
+    });
+  }
+
   function renderSummary() {
     var data = getStoredData();
     var meta = data.bookingMeta || {};
@@ -191,7 +242,7 @@
     var basePrice = Number(meta.grandTotal || 0);
     var totalGuests = Number(meta.totalGuests || 1);
     var extraPrice = Number(options.extraPrice || 0);
-
+    var paidSelections = getPaidSelectionsFromOptions(options);
     var finalTotal = basePrice + extraPrice;
 
     var guestLine = document.getElementById("summary-guest-line");
@@ -209,6 +260,8 @@
     if (grandTotal) {
       grandTotal.textContent = formatCurrency(finalTotal);
     }
+
+    renderSummaryOptionRows(paidSelections);
   }
 
   function renderTourCardFromMetaStep3() {
