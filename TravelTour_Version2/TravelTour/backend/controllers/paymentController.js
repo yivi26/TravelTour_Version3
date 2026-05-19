@@ -2,6 +2,7 @@ import crypto from "crypto";
 import axios from "axios";
 import db from "../config/db.js";
 import { sendMomoPaymentSuccessEmail } from "../utils/momoPaymentSuccessMail.js";
+import { ensureBookingCommissionSnapshot } from "../models/commissionModel.js";
 
 export const createMomoPayment = async (req, res) => {
   try {
@@ -132,7 +133,15 @@ async function confirmBookingIfPendingPayment(bookingId) {
     `,
     [bookingId],
   );
-  return Number(result?.affectedRows || 0) === 1;
+  const firstConfirm = Number(result?.affectedRows || 0) === 1;
+  if (firstConfirm) {
+    try {
+      await ensureBookingCommissionSnapshot(bookingId);
+    } catch (err) {
+      console.error("ensureBookingCommissionSnapshot:", err);
+    }
+  }
+  return firstConfirm;
 }
 
 export const momoReturn = async (req, res) => {

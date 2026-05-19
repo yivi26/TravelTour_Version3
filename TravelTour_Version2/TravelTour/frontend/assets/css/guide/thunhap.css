@@ -189,3 +189,190 @@
     text-align: left;
   }
 }
+
+/* ===== Bank info ===== */
+.bank-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 12px 0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.bank-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.bank-card__head strong {
+  color: #111827;
+  font-size: 15px;
+}
+.bank-card__edit {
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bank-card__edit:hover { background: #15803d; }
+.bank-card__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px 14px;
+}
+.bank-card__list li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13.5px;
+  border-bottom: 1px dashed #f1f5f9;
+  padding: 4px 0;
+}
+.bank-card__list span { color: #6b7280; }
+.bank-card__list strong { color: #111827; }
+.bank-card__warn { color: #b45309; font-size: 13px; margin: 0; }
+
+/* ===== Earning rows ===== */
+.earning-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.earning-row:last-child { border-bottom: none; }
+.earning-row__title {
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 4px;
+}
+.earning-row__sub {
+  font-size: 12.5px;
+  color: #6b7280;
+  margin: 0;
+}
+.earning-ref {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: #2563eb;
+}
+.earning-row__right {
+  text-align: right;
+  min-width: 200px;
+}
+.earning-row__amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.earning-row__amount span { color: #15803d; font-weight: 600; font-size: 14px; }
+.earning-row__amount small { color: #b45309; font-size: 11.5px; }
+.earning-row__amount strong { color: #047857; font-size: 16px; margin-top: 2px; }
+.earning-status {
+  display: inline-block;
+  padding: 2px 10px;
+  margin-top: 6px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.earning-status.confirmed { background: #dcfce7; color: #15803d; }
+.earning-status.waiting   { background: #fef3c7; color: #b45309; }
+.earning-status.pending   { background: #fee2e2; color: #b91c1c; }
+.earning-status.cancelled { background: #f1f5f9; color: #475569; }
+.earning-confirm-btn {
+  margin-top: 8px;
+  background: #16a34a;
+  border: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-block;
+}
+.earning-confirm-btn:hover { background: #15803d; }
+
+/* ===== Bank modal ===== */
+.bank-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bank-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+}
+.bank-modal__dialog {
+  position: relative;
+  background: #fff;
+  border-radius: 14px;
+  width: min(480px, 92vw);
+  padding: 18px 20px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2);
+}
+.bank-modal__dialog header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.bank-modal__dialog header h3 { margin: 0; font-size: 16px; color: #111827; }
+.bank-modal__dialog header button {
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  color: #6b7280;
+  cursor: pointer;
+}
+#bankForm label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #374151;
+}
+#bankForm input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13.5px;
+}
+#bankForm input:focus { outline: 2px solid #86efac; border-color: #16a34a; }
+.bank-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+.bank-modal__actions .btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bank-modal__actions .btn--ghost {
+  background: #f1f5f9;
+  color: #475569;
+}
+.bank-modal__actions .btn--primary {
+  background: #16a34a;
+  color: #fff;
+}

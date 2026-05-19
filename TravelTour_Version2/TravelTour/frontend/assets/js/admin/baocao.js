@@ -321,6 +321,87 @@
     }
   }
 
+  function statusLabel(s) {
+    const map = {
+      guide_confirmed: { label: "HDV đã xác nhận", cls: "confirmed" },
+      provider_marked_paid: { label: "Chờ HDV xác nhận", cls: "waiting" },
+      pending_payout: { label: "Chờ NCC trả HDV", cls: "pending" },
+      not_completed: { label: "Tour chưa hoàn thành", cls: "snapshot" },
+      cancelled: { label: "Đã hủy", cls: "cancelled" },
+    };
+    return map[s] || { label: s || "-", cls: "snapshot" };
+  }
+
+  function renderCommissionTable(rows) {
+    const body = document.querySelector("#commissionTableBody");
+    if (!body) return;
+    if (!rows || rows.length === 0) {
+      body.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:18px;color:#9ca3af;">Chưa có dữ liệu hoa hồng.</td></tr>`;
+      return;
+    }
+    body.innerHTML = rows
+      .map((r) => {
+        const st = statusLabel(r.guide_status);
+        return `
+          <tr>
+            <td>${escapeHtml(r.booking_code || "#" + r.booking_id)}</td>
+            <td>${escapeHtml(r.tour_title || "-")}</td>
+            <td>${escapeHtml(r.provider_name || "-")}</td>
+            <td class="num">${Number(r.duration_days || 0)}</td>
+            <td class="num">${formatVnd(r.base_amount)}</td>
+            <td class="num">${Number(r.platform_fee_rate || 0)}%</td>
+            <td class="num">${formatVnd(r.platform_fee_amount)}</td>
+            <td class="num">${Number(r.guide_commission_rate || 0)}%</td>
+            <td class="num">${formatVnd(r.guide_commission_gross)}</td>
+            <td class="num">${formatVnd(r.guide_partner_fee_amount)}</td>
+            <td class="num"><strong>${formatVnd(r.total_system_amount)}</strong></td>
+            <td><span class="commission-status ${st.cls}">${st.label}</span></td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  function renderCommissionOverview(ov) {
+    const wrap = document.querySelector("#commissionSummary");
+    if (!wrap) return;
+    wrap.innerHTML = `
+      <div class="commission-summary__item is-primary">
+        <span>Tổng phí sàn</span>
+        <strong>${formatCompactVnd(ov?.totalSystemRevenue || 0)}</strong>
+      </div>
+      <div class="commission-summary__item">
+        <span>Phí NCC</span>
+        <strong>${formatCompactVnd(ov?.totalPlatformFee || 0)}</strong>
+      </div>
+      <div class="commission-summary__item">
+        <span>Phí partner HDV (6%)</span>
+        <strong>${formatCompactVnd(ov?.totalPartnerFee || 0)}</strong>
+      </div>
+      <div class="commission-summary__item">
+        <span>Tổng booking đã trả</span>
+        <strong>${new Intl.NumberFormat("vi-VN").format(ov?.bookingCount || 0)}</strong>
+      </div>
+    `;
+    const statTotal = qs("#statCommissionTotal");
+    if (statTotal) statTotal.textContent = formatCompactVnd(ov?.totalSystemRevenue || 0);
+  }
+
+  async function loadCommissions() {
+    try {
+      const [ov, br] = await Promise.all([
+        fetchJson("/api/admin/commissions/overview"),
+        fetchJson("/api/admin/commissions/breakdown?limit=50"),
+      ]);
+      renderCommissionOverview(ov?.data || {});
+      renderCommissionTable(br?.data || []);
+    } catch (err) {
+      console.error("commissions:", err);
+      renderCommissionOverview({});
+      renderCommissionTable([]);
+    }
+  }
+
   async function init() {
     bindExportButtons();
     try {
@@ -339,6 +420,7 @@
       renderPie([]);
       renderTopTours([]);
     }
+    loadCommissions();
   }
 
   document.addEventListener("DOMContentLoaded", init);

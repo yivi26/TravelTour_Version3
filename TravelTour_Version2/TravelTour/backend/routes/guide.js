@@ -15,12 +15,29 @@ import {
   getGuideAvailabilityController,
   saveGuideAvailabilityController,
   deleteGuideAvailabilityController,
+  getTourProviderInfoController,
 } from "../controllers/guideController.js";
 import {
   getGuideTourProgressController,
   saveGuideTourProgressController,
   completeGuideTourController,
 } from "../controllers/tourProgressController.js";
+import {
+  getGuideNotificationsController,
+  markGuideNotificationsReadController,
+} from "../controllers/guideNotificationsController.js";
+import {
+  createGuideAbsenceController,
+  listGuideOwnAbsenceController,
+} from "../controllers/guideAbsenceController.js";
+import uploadAbsenceEvidence from "../middleware/uploadAbsenceEvidence.js";
+import {
+  guideEarningsSummaryController,
+  listGuideEarningsController,
+  guideConfirmEarningController,
+  getGuideBankInfoController,
+  updateGuideBankInfoController,
+} from "../controllers/commissionController.js";
 
 const router = express.Router();
 
@@ -60,17 +77,31 @@ router.use(async (req, res, next) => {
   }
 });
 
+router.get("/notifications", getGuideNotificationsController);
+router.patch("/notifications/read", markGuideNotificationsReadController);
 router.get("/dashboard", getGuideDashboardController);
 router.get("/availability", getGuideAvailabilityController);
 router.post("/availability", saveGuideAvailabilityController);
 router.delete("/availability/:id", deleteGuideAvailabilityController);
 router.get("/schedules", getGuideSchedulesController);
 router.get("/current-tours", getCurrentToursController);
+router.get("/tours/:tourId/provider", getTourProviderInfoController);
+router.post(
+  "/absences",
+  uploadAbsenceEvidence.single("evidence"),
+  createGuideAbsenceController,
+);
+router.get("/absences", listGuideOwnAbsenceController);
 router.get("/tours/:tourId/progress", getGuideTourProgressController);
 router.put("/tours/:tourId/progress", saveGuideTourProgressController);
 router.post("/tours/:tourId/complete", completeGuideTourController);
 router.get("/customers", getGuideCustomersController);
 router.get("/income", getGuideIncomeController);
+router.get("/earnings/summary", guideEarningsSummaryController);
+router.get("/earnings", listGuideEarningsController);
+router.post("/earnings/:earningId/confirm", guideConfirmEarningController);
+router.get("/bank-info", getGuideBankInfoController);
+router.put("/bank-info", updateGuideBankInfoController);
 router.get("/profile", getGuideProfileController);
 router.put("/profile", updateGuideProfileController);
 router.post("/profile/avatar", uploadAvatar.single("avatar"), updateGuideAvatarController);

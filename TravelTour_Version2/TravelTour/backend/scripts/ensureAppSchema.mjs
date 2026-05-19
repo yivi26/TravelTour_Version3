@@ -254,5 +254,177 @@ try {
   console.warn("tour_guide_progress:", e.message);
 }
 
+try {
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS customer_notifications (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      user_id INT UNSIGNED NOT NULL,
+      booking_id BIGINT UNSIGNED NULL,
+      tour_id INT UNSIGNED NULL,
+      type VARCHAR(50) NOT NULL DEFAULT 'info',
+      title VARCHAR(255) NOT NULL,
+      body TEXT NOT NULL,
+      is_read TINYINT(1) NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY idx_customer_notifications_user (user_id, is_read, created_at),
+      KEY idx_customer_notifications_tour (tour_id),
+      KEY idx_customer_notifications_booking (booking_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  console.log("customer_notifications table ok");
+} catch (e) {
+  console.warn("customer_notifications:", e.message);
+}
+
+try {
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS tour_guide_history (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      tour_id INT UNSIGNED NOT NULL,
+      guide_id INT UNSIGNED NULL,
+      action ENUM('assigned','unassigned','replaced') NOT NULL,
+      reason VARCHAR(255) NULL,
+      by_user_id INT UNSIGNED NULL,
+      previous_guide_id INT UNSIGNED NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY idx_tgh_tour (tour_id, created_at),
+      KEY idx_tgh_guide (guide_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  console.log("tour_guide_history table ok");
+} catch (e) {
+  console.warn("tour_guide_history:", e.message);
+}
+
+try {
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS guide_absence_requests (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      guide_id INT UNSIGNED NOT NULL,
+      tour_id INT UNSIGNED NOT NULL,
+      provider_id INT UNSIGNED NOT NULL,
+      reason TEXT NOT NULL,
+      evidence_url VARCHAR(500) NULL,
+      urgency ENUM('low','medium','urgent') NOT NULL DEFAULT 'medium',
+      status ENUM('pending','approved','rejected','cancelled') NOT NULL DEFAULT 'pending',
+      requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      resolved_at DATETIME NULL,
+      resolved_by_user_id INT UNSIGNED NULL,
+      replacement_guide_id INT UNSIGNED NULL,
+      provider_note TEXT NULL,
+      PRIMARY KEY (id),
+      KEY idx_gar_guide (guide_id, status),
+      KEY idx_gar_provider (provider_id, status),
+      KEY idx_gar_tour (tour_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  console.log("guide_absence_requests table ok");
+} catch (e) {
+  console.warn("guide_absence_requests:", e.message);
+}
+
+try {
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS guide_notifications (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      guide_id INT UNSIGNED NOT NULL,
+      tour_id INT UNSIGNED NOT NULL,
+      provider_id INT UNSIGNED NULL,
+      type VARCHAR(50) NOT NULL DEFAULT 'tour_assigned',
+      title VARCHAR(255) NOT NULL,
+      body TEXT NOT NULL,
+      is_read TINYINT(1) NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY idx_guide_notifications_guide (guide_id, is_read, created_at),
+      KEY idx_guide_notifications_tour (tour_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  console.log("guide_notifications table ok");
+} catch (e) {
+  console.warn("guide_notifications:", e.message);
+}
+
+try {
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS booking_commissions (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      booking_id INT UNSIGNED NOT NULL,
+      tour_id INT UNSIGNED NOT NULL,
+      provider_id INT UNSIGNED NOT NULL,
+      duration_days SMALLINT NOT NULL DEFAULT 1,
+      base_amount DECIMAL(14,0) NOT NULL DEFAULT 0,
+      platform_fee_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+      platform_fee_amount DECIMAL(14,0) NOT NULL DEFAULT 0,
+      guide_commission_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+      guide_commission_gross_expected DECIMAL(14,0) NOT NULL DEFAULT 0,
+      guide_partner_fee_rate DECIMAL(5,2) NOT NULL DEFAULT 6,
+      status ENUM('snapshot','cancelled') NOT NULL DEFAULT 'snapshot',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uk_booking_commissions_booking (booking_id),
+      KEY idx_booking_commissions_provider (provider_id, created_at),
+      KEY idx_booking_commissions_tour (tour_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  console.log("booking_commissions table ok");
+} catch (e) {
+  console.warn("booking_commissions:", e.message);
+}
+
+try {
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS guide_earnings (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      booking_id INT UNSIGNED NOT NULL,
+      tour_id INT UNSIGNED NOT NULL,
+      guide_id INT UNSIGNED NOT NULL,
+      provider_id INT UNSIGNED NOT NULL,
+      gross_amount DECIMAL(14,0) NOT NULL DEFAULT 0,
+      partner_fee_rate DECIMAL(5,2) NOT NULL DEFAULT 6,
+      partner_fee_amount DECIMAL(14,0) NOT NULL DEFAULT 0,
+      net_amount DECIMAL(14,0) NOT NULL DEFAULT 0,
+      status ENUM('pending_payout','provider_marked_paid','guide_confirmed','cancelled')
+        NOT NULL DEFAULT 'pending_payout',
+      provider_marked_paid_at DATETIME NULL,
+      provider_payment_ref VARCHAR(120) NULL,
+      guide_confirmed_at DATETIME NULL,
+      cancelled_reason VARCHAR(255) NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uk_guide_earnings_booking (booking_id),
+      KEY idx_guide_earnings_guide (guide_id, status, created_at),
+      KEY idx_guide_earnings_provider (provider_id, status, created_at),
+      KEY idx_guide_earnings_tour (tour_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  console.log("guide_earnings table ok");
+} catch (e) {
+  console.warn("guide_earnings:", e.message);
+}
+
+const GUIDE_BANK_COLUMNS = [
+  "ALTER TABLE guides ADD COLUMN bank_name VARCHAR(150) NULL",
+  "ALTER TABLE guides ADD COLUMN bank_account_number VARCHAR(50) NULL",
+  "ALTER TABLE guides ADD COLUMN bank_account_name VARCHAR(150) NULL",
+  "ALTER TABLE guides ADD COLUMN bank_branch VARCHAR(150) NULL",
+];
+for (const sql of GUIDE_BANK_COLUMNS) {
+  try {
+    await conn.query(sql);
+    console.log("guides +", sql.match(/ADD COLUMN ([^\s(]+)/)?.[1]);
+  } catch (e) {
+    if (e.code === "ER_DUP_FIELDNAME") {
+      console.log("guides exists", sql.match(/ADD COLUMN ([^\s(]+)/)?.[1]);
+    } else {
+      console.warn("guides bank col:", e.message);
+    }
+  }
+}
+
 await conn.end();
 console.log("ensureAppSchema: done.");

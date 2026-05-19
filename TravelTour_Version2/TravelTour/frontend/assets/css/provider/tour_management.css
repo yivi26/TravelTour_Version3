@@ -999,3 +999,147 @@ body > .tp-modal {
     flex-wrap: wrap;
   }
 }
+
+/* ===== Payable to guide panel (inside tour progress modal) ===== */
+.tp-payable {
+  margin: 14px 0;
+  background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.tp-payable--empty {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+  padding: 12px;
+}
+.tp-payable__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.tp-payable__header strong {
+  font-size: 15px;
+  color: #065f46;
+}
+.tp-payable__header p {
+  font-size: 12.5px;
+  color: #15803d;
+  margin: 2px 0 0;
+}
+.tp-payable__totals {
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  text-align: right;
+  border: 1px solid #bbf7d0;
+}
+.tp-payable__totals span {
+  font-size: 11.5px;
+  color: #15803d;
+  display: block;
+}
+.tp-payable__totals strong {
+  font-size: 17px;
+  color: #047857;
+}
+.tp-payable__bank {
+  background: #fff;
+  border: 1px solid #d1fae5;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.tp-payable__bank-title {
+  font-size: 13px;
+  color: #065f46;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.tp-payable__bank-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px 16px;
+}
+.tp-payable__bank-list li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.tp-payable__bank-list span {
+  color: #6b7280;
+}
+.tp-payable__bank-list strong {
+  color: #111827;
+}
+.tp-payable__bank-warn {
+  color: #b45309;
+  font-size: 12.5px;
+  margin: 0;
+}
+.tp-payable__table-wrap {
+  overflow-x: auto;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #d1fae5;
+}
+.tp-payable__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 720px;
+}
+.tp-payable__table thead th {
+  background: #f0fdf4;
+  text-align: left;
+  padding: 8px 12px;
+  color: #15803d;
+  font-weight: 600;
+  border-bottom: 1px solid #d1fae5;
+}
+.tp-payable__table th.num,
+.tp-payable__table td.num {
+  text-align: right;
+  white-space: nowrap;
+}
+.tp-payable__table tbody td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #111827;
+}
+.tp-payable__status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.tp-payable__status.confirmed { background: #dcfce7; color: #15803d; }
+.tp-payable__status.waiting   { background: #fef3c7; color: #b45309; }
+.tp-payable__status.pending   { background: #fee2e2; color: #b91c1c; }
+.tp-payable__status.cancelled { background: #f1f5f9; color: #475569; }
+.tp-payable__btn {
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #16a34a;
+  color: #fff;
+}
+.tp-payable__btn:hover { background: #15803d; }
+.tp-payable__btn--pay { background: #16a34a; }
+.tp-payable__note {
+  font-size: 12px;
+  color: #64748b;
+}

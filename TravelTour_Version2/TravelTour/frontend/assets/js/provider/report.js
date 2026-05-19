@@ -426,6 +426,36 @@ function renderErrorState(message) {
   renderPieChart([]);
 }
 
+async function fetchCommissionSummary() {
+  try {
+    const res = await fetch("/api/provider/commissions/summary?months=6", {
+      headers: providerAuthHeaders(),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.message || "Lỗi tải tổng hợp hoa hồng");
+    return json.data || {};
+  } catch (err) {
+    console.warn("commission summary:", err);
+    return {};
+  }
+}
+
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+function renderCommissionSummary(summary) {
+  setText("commPlatformFee", formatCompactMoney(summary.platformFee || 0));
+  setText("commGuideConfirmed", formatCompactMoney(summary.guideCommissionConfirmed || 0));
+  setText("commNetRevenue", formatCompactMoney(summary.netRevenueAfterAll || 0));
+  setText("commPayable", formatCompactMoney(summary.payableToGuides || 0));
+  setText(
+    "commPayableTrend",
+    `${summary.payableCount || 0} khoản chờ thanh toán cho HDV`,
+  );
+}
+
 async function initPage() {
   try {
     bindEvents();
@@ -434,6 +464,12 @@ async function initPage() {
   } catch (error) {
     console.error("Lỗi tải báo cáo doanh thu:", error);
     renderErrorState("Không tải được dữ liệu báo cáo thực.");
+  }
+  try {
+    const summary = await fetchCommissionSummary();
+    renderCommissionSummary(summary);
+  } catch (err) {
+    console.warn("renderCommissionSummary:", err);
   }
 }
 

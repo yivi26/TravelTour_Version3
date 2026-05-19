@@ -19,13 +19,22 @@
         </div>
 
         <div class="topbar-right">
+          <div class="guide-noti-wrap">
+            <button type="button" class="guide-noti-bell" aria-label="Thông báo" aria-expanded="false">
+              <svg class="guide-noti-bell__icon" viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+                <path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+              <span class="guide-noti-bell__dot" hidden></span>
+            </button>
+          </div>
           <div class="user-info">
             <p class="user-name" id="topbarUserName">Đang tải...</p>
             <p class="user-role" id="topbarUserRole">Hướng dẫn viên</p>
           </div>
 
           <img
-  class="user-avatar"
+            class="user-avatar"
   id="topbarUserAvatar"
   src="https://ui-avatars.com/api/?name=Guide&background=16a34a&color=fff"
   alt="Guide Avatar"
@@ -211,6 +220,8 @@
 
         <script src="../../assets/js/auth/account-lock-fetch.js"></script>
     <script src="../../assets/js/guide/guideFetch.js"></script>
+    <script src="../../assets/js/guide/guide-notifications.js"></script>
+    <script src="../../assets/js/guide/guideTopbar.js"></script>
     <script src="../../assets/js/guide/hosocanhan.js"></script>
   </body>
 </html>

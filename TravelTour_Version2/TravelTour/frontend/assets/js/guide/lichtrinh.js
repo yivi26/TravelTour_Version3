@@ -346,7 +346,6 @@ function switchTab(tabName) {
 
   const panels = {
     register: document.getElementById("ltPanelRegister"),
-    list: document.getElementById("ltPanelList"),
     assigned: document.getElementById("ltPanelAssigned"),
   };
 
@@ -357,7 +356,6 @@ function switchTab(tabName) {
     panel.hidden = !active;
   });
 
-  if (tabName === "list") renderScheduleList();
   if (tabName === "assigned") renderAssignedList();
 }
 
@@ -467,7 +465,6 @@ async function cancelAvailability() {
   document.getElementById("ltNote").value = "";
   renderSelectedChips();
   renderCalendar();
-  renderScheduleList();
   showToast(
     removed > 0
       ? `Đã hủy đăng ký ${removed} ngày rảnh`
@@ -492,109 +489,7 @@ async function deleteAvailability(id, options = {}) {
 
   if (!quiet) {
     renderCalendar();
-    renderScheduleList();
     showToast(result.message || "Đã xóa ngày rảnh");
-  }
-}
-
-function renderScheduleList() {
-  const container = document.getElementById("ltScheduleList");
-  const filter = document.getElementById("ltListFilter")?.value || "all";
-  if (!container) return;
-
-  const tourSet = getTourDateSet();
-  const items = [];
-
-  if (filter === "all" || filter === "available") {
-    availability.forEach((row) => {
-      const dateLabel = formatDateVN(row.date);
-      items.push({
-        kind: "available",
-        sortKey: normalizeDateKey(row.date),
-        id: row.id,
-        title: "Ngày rảnh đã đăng ký",
-        date: row.date,
-        meta: [
-          `<span><i class="ti ti-calendar"></i>${dateLabel}</span>`,
-          `<span><i class="ti ti-clock"></i>${row.timeFrom || "08:00"} - ${row.timeTo || "17:00"}</span>`,
-          `<span><i class="ti ti-category"></i>${row.tourType || "Tất cả loại tour"}</span>`,
-        ],
-        note: row.note,
-        badge: "lt-badge--free",
-        badgeText: "Ngày rảnh",
-      });
-    });
-  }
-
-  if (filter === "all" || filter === "tour") {
-    schedules.forEach((item) => {
-      items.push({
-        kind: "tour",
-        sortKey: normalizeDateKey(item.startDate),
-        id: item.id,
-        title: item.tourName,
-        date: item.startDate,
-        meta: [
-          `<span><i class="ti ti-calendar"></i>${formatDateVN(item.startDate)}</span>`,
-          `<span><i class="ti ti-clock"></i>${formatTimeRange(item.startDate, item.endDate)}</span>`,
-          `<span><i class="ti ti-map-pin"></i>${item.location}</span>`,
-          `<span><i class="ti ti-users"></i>${item.customers} khách</span>`,
-        ],
-        badge: `lt-badge--${item.type || "upcoming"}`,
-        badgeText: item.status,
-        tourId: item.id,
-      });
-    });
-  }
-
-  items.sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0));
-
-  if (!items.length) {
-    container.innerHTML = '<div class="lt-empty">Không có lịch phù hợp.</div>';
-    return;
-  }
-
-  container.innerHTML = items
-    .map((item) => {
-      const focused =
-        urlTourHighlightId != null &&
-        item.kind === "tour" &&
-        Number(item.tourId) === urlTourHighlightId;
-
-      const actions =
-        item.kind === "available"
-          ? `<button type="button" class="lt-link lt-link--danger" data-delete-id="${item.id}">Xóa</button>`
-          : `<button type="button" class="lt-link" data-tour-id="${item.tourId}">Xem chi tiết →</button>`;
-
-      const noteHtml = item.note
-        ? `<p class="lt-muted" style="margin-top:8px">${item.note}</p>`
-        : "";
-
-      return `
-        <article class="lt-item${focused ? " lt-item--focused" : ""}">
-          <div class="lt-item-top">
-            <div>
-              <div class="lt-item-title">${item.title}</div>
-              <div class="lt-item-meta">${item.meta.join("")}</div>
-              ${noteHtml}
-            </div>
-            <div class="lt-item-actions">
-              <span class="lt-badge ${item.badge}">${item.badgeText}</span>
-              ${actions}
-            </div>
-          </div>
-        </article>
-      `;
-    })
-    .join("");
-
-  if (urlTourHighlightId != null) {
-    requestAnimationFrame(() => {
-      container.querySelector(".lt-item--focused")?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    });
   }
 }
 
@@ -649,6 +544,15 @@ function renderAssignedList() {
       `;
     })
     .join("");
+
+  if (urlTourHighlightId != null) {
+    requestAnimationFrame(() => {
+      container.querySelector(".lt-item--focused")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  }
 }
 
 function bindEvents() {
@@ -716,38 +620,15 @@ function bindEvents() {
     }
   });
 
-  document.getElementById("ltListFilterBtn")?.addEventListener("click", () => {
-    renderScheduleList();
-  });
-
-  document.getElementById("ltListFilter")?.addEventListener("change", () => {
-    renderScheduleList();
-  });
-
   document.getElementById("logoutBtn")?.addEventListener("click", guideLogout);
 
-  document.addEventListener("click", async (event) => {
+  document.addEventListener("click", (event) => {
     const tourBtn = event.target.closest("[data-tour-id]");
-    if (tourBtn) {
-      const tourId = tourBtn.getAttribute("data-tour-id");
-      if (tourId) {
-        window.location.href = `tourdangdan.html?tourId=${tourId}`;
-      }
-      return;
-    }
+    if (!tourBtn) return;
 
-    const deleteBtn = event.target.closest("[data-delete-id]");
-    if (!deleteBtn) return;
-
-    const id = deleteBtn.getAttribute("data-delete-id");
-    if (!id) return;
-    if (!window.confirm("Xóa ngày rảnh này?")) return;
-
-    try {
-      await deleteAvailability(id);
-    } catch (error) {
-      console.error(error);
-      showToast(error.message || "Không thể xóa", true);
+    const tourId = tourBtn.getAttribute("data-tour-id");
+    if (tourId) {
+      window.location.href = `tourdangdan.html?tourId=${tourId}`;
     }
   });
 }
@@ -767,7 +648,6 @@ async function initPage() {
 
     renderCalendar();
     renderSelectedChips();
-    renderScheduleList();
     renderAssignedList();
 
     if (urlTourHighlightId != null) {
@@ -776,12 +656,6 @@ async function initPage() {
   } catch (error) {
     console.error("Lỗi tải lịch trình:", error);
     showToast(error.message || "Không tải được dữ liệu", true);
-
-    const list = document.getElementById("ltScheduleList");
-    if (list) {
-      list.innerHTML =
-        '<div class="lt-empty">Không tải được lịch trình.</div>';
-    }
   }
 }
 

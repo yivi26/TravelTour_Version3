@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
@@ -20,6 +20,7 @@
       href="../../assets/css/provider/booking_management.css"
     />
     <link rel="stylesheet" href="../../assets/css/provider/provider-logout.css" />
+    <link rel="stylesheet" href="../../assets/css/provider/provider-absence-badge.css" />
   </head>
   <body>
     <aside class="sidebar">
@@ -54,6 +55,14 @@
           <a href="./guide_assignment.html" class="nav-item">
             <i class="fa-solid fa-users"></i>
             Phân công hướng dẫn viên
+          </a>
+        </li>
+
+        <li>
+          <a href="./guide_absences.html" class="nav-item">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            Yêu cầu HDV xin nghỉ
+            <span data-provider-absence-badge class="provider-absence-nav-badge" hidden>0</span>
           </a>
         </li>
 
@@ -310,6 +319,7 @@
 
     <script src="../../assets/js/auth/account-lock-fetch.js"></script>
     <script src="../../assets/js/provider/providerFetch.js"></script>
+    <script src="../../assets/js/provider/provider-absence-badge.js"></script>
     <script src="../../assets/js/provider/booking_management.js"></script>
     <script src="../../assets/js/provider/provider-notifications.js"></script>
     <script src="../../assets/js/provider/provider-logout.js"></script>

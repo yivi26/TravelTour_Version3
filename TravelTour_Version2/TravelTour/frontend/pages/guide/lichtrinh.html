@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
@@ -29,6 +29,15 @@
         </div>
 
         <div class="topbar-right">
+          <div class="guide-noti-wrap">
+            <button type="button" class="guide-noti-bell" aria-label="Thông báo" aria-expanded="false">
+              <svg class="guide-noti-bell__icon" viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+                <path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+              <span class="guide-noti-bell__dot" hidden></span>
+            </button>
+          </div>
           <div class="user-info">
             <p class="user-name" id="topbarUserName">Đang tải...</p>
             <p class="user-role" id="topbarUserRole">Hướng dẫn viên</p>
@@ -102,10 +111,6 @@
               <button type="button" class="lt-tab is-active" data-tab="register" role="tab" aria-selected="true">
                 <i class="ti ti-calendar-plus"></i>
                 Đăng ký ngày rảnh
-              </button>
-              <button type="button" class="lt-tab" data-tab="list" role="tab" aria-selected="false">
-                <i class="ti ti-list-details"></i>
-                Danh sách lịch
               </button>
               <button type="button" class="lt-tab" data-tab="assigned" role="tab" aria-selected="false">
                 <i class="ti ti-map-pin"></i>
@@ -201,6 +206,7 @@
 
     <script src="../../assets/js/auth/account-lock-fetch.js"></script>
     <script src="../../assets/js/guide/guideFetch.js"></script>
+    <script src="../../assets/js/guide/guide-notifications.js"></script>
     <script src="../../assets/js/guide/guideTopbar.js"></script>
     <script src="../../assets/js/guide/lichtrinh.js"></script>
   </body>

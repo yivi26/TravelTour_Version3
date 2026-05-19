@@ -422,6 +422,48 @@ export async function getGuideIncomeData(guideId, monthRange = 6) {
   };
 }
 
+export async function getTourProviderInfoForGuide(guideId, tourId) {
+  const gid = Number(guideId);
+  const tid = Number(tourId);
+  if (!gid || !tid) return null;
+
+  const [rows] = await db.query(
+    `
+    SELECT
+      t.id AS tour_id,
+      t.title AS tour_title,
+      t.location AS tour_location,
+      p.id AS provider_id,
+      p.company_name,
+      p.phone AS provider_phone,
+      p.hotline AS provider_hotline,
+      p.email AS provider_email,
+      p.website_url AS provider_website,
+      p.address AS provider_address,
+      p.description AS provider_description,
+      p.logo_url AS provider_logo,
+      p.bank_name AS provider_bank_name,
+      p.bank_branch AS provider_bank_branch,
+      p.bank_account_number AS provider_bank_account_number,
+      p.bank_account_name AS provider_bank_account_name,
+      p.tax_code AS provider_tax_code,
+      u.full_name AS contact_full_name,
+      u.email AS contact_email,
+      u.phone AS contact_phone,
+      u.avatar_url AS contact_avatar
+    FROM tours t
+    JOIN providers p ON p.id = t.provider_id
+    LEFT JOIN users u ON u.id = p.user_id
+    WHERE t.id = ?
+      AND t.guide_id = ?
+    LIMIT 1
+    `,
+    [tid, gid],
+  );
+
+  return rows[0] || null;
+}
+
 export async function getGuideProfileData(guideId) {
   const [[guideRow]] = await db.query(
     `

@@ -19,6 +19,15 @@
         </div>
 
         <div class="topbar-right">
+          <div class="guide-noti-wrap">
+            <button type="button" class="guide-noti-bell" aria-label="Thông báo" aria-expanded="false">
+              <svg class="guide-noti-bell__icon" viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+                <path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+              <span class="guide-noti-bell__dot" hidden></span>
+            </button>
+          </div>
           <div class="user-info">
             <p class="user-name" id="topbarUserName">Đang tải...</p>
             <p class="user-role" id="topbarUserRole">Hướng dẫn viên</p>
@@ -82,10 +91,12 @@
 
             <section class="income-stats-grid" id="incomeStatsGrid"></section>
 
+            <section id="guideBankInfo"></section>
+
             <section class="card income-card">
               <div class="chart-header">
                 <h3 class="section-title small-title">
-                  Biểu đồ thu nhập theo tháng
+                  Biểu đồ thu nhập theo tháng (Gross vs Net)
                 </h3>
 
                 <select id="rangeSelect" class="range-select">
@@ -101,14 +112,17 @@
             </section>
 
             <section class="card income-card">
-              <h3 class="section-title small-title">Xu hướng thu nhập</h3>
+              <h3 class="section-title small-title">Xu hướng thu nhập thực</h3>
               <div class="chart-wrap line-chart-wrap">
                 <canvas id="incomeLineChart"></canvas>
               </div>
             </section>
 
             <section class="card income-card">
-              <h3 class="section-title small-title">Giao dịch gần đây</h3>
+              <h3 class="section-title small-title">Hoa hồng từng tour</h3>
+              <p class="section-sub" style="font-size:13px;color:#6b7280;margin-bottom:8px;">
+                Hoa hồng gross đã trừ phí sàn 6% trước khi cộng vào "Thu nhập thực".
+              </p>
               <div class="transaction-list" id="transactionList"></div>
             </section>
           </div>
@@ -119,6 +133,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="../../assets/js/auth/account-lock-fetch.js"></script>
     <script src="../../assets/js/guide/guideFetch.js"></script>
+    <script src="../../assets/js/guide/guide-notifications.js"></script>
     <script src="../../assets/js/guide/guideTopbar.js"></script>
     <script src="../../assets/js/guide/thunhap.js"></script>
   </body>

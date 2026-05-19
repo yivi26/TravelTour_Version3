@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
@@ -17,6 +17,7 @@
     />
     <link rel="stylesheet" href="../../assets/css/provider/report.css" />
     <link rel="stylesheet" href="../../assets/css/provider/provider-logout.css" />
+    <link rel="stylesheet" href="../../assets/css/provider/provider-absence-badge.css" />
   </head>
   <body>
     <aside class="sidebar">
@@ -51,6 +52,14 @@
           <a href="./guide_assignment.html" class="nav-item">
             <i class="fa-solid fa-users"></i>
             Phân công hướng dẫn viên
+          </a>
+        </li>
+
+        <li>
+          <a href="./guide_absences.html" class="nav-item">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            Yêu cầu HDV xin nghỉ
+            <span data-provider-absence-badge class="provider-absence-nav-badge" hidden>0</span>
           </a>
         </li>
 
@@ -154,6 +163,53 @@
         </div>
       </div>
 
+      <!-- ===== COMMISSION SUMMARY ===== -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-info">
+            <div class="title">Phí sàn đã thu</div>
+            <div class="value" id="commPlatformFee">0 đ</div>
+            <div class="trend" id="commPlatformFeeTrend">Phí nền tảng theo % tour</div>
+          </div>
+          <div class="stat-icon icon-orange">
+            <i class="fa-solid fa-receipt"></i>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-info">
+            <div class="title">Hoa hồng HDV (đã xác nhận)</div>
+            <div class="value" id="commGuideConfirmed">0 đ</div>
+            <div class="trend" id="commGuideConfirmedTrend">Đã được HDV xác nhận nhận tiền</div>
+          </div>
+          <div class="stat-icon icon-blue">
+            <i class="fa-solid fa-handshake"></i>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-info">
+            <div class="title">Doanh thu thực</div>
+            <div class="value" id="commNetRevenue">0 đ</div>
+            <div class="trend" id="commNetRevenueTrend">Sau phí sàn + hoa hồng HDV đã trả</div>
+          </div>
+          <div class="stat-icon icon-green">
+            <i class="fa-solid fa-wallet"></i>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-info">
+            <div class="title">Còn phải trả HDV</div>
+            <div class="value" id="commPayable">0 đ</div>
+            <div class="trend" id="commPayableTrend">Khoản chờ thanh toán cho HDV</div>
+          </div>
+          <div class="stat-icon icon-purple">
+            <i class="fa-solid fa-money-bill-transfer"></i>
+          </div>
+        </div>
+      </div>
+
       <div class="charts-grid">
         <div class="card">
           <div class="card-title">Doanh thu theo tháng</div>
@@ -205,6 +261,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="../../assets/js/auth/account-lock-fetch.js"></script>
     <script src="../../assets/js/provider/providerFetch.js"></script>
+    <script src="../../assets/js/provider/provider-absence-badge.js"></script>
     <script src="../../assets/js/provider/report.js"></script>
     <script src="../../assets/js/provider/provider-notifications.js"></script>
     <script src="../../assets/js/provider/provider-logout.js"></script>

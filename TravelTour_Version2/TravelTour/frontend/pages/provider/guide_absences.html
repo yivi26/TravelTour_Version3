@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TravelTour - Phân công hướng dẫn viên</title>
+    <title>TravelTour - Yêu cầu báo bận HDV</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,6 +19,7 @@
       rel="stylesheet"
       href="../../assets/css/provider/guide_assignment.css"
     />
+    <link rel="stylesheet" href="../../assets/css/provider/guide_absences.css" />
     <link rel="stylesheet" href="../../assets/css/provider/provider-logout.css" />
     <link rel="stylesheet" href="../../assets/css/provider/provider-absence-badge.css" />
   </head>
@@ -52,14 +53,14 @@
         </li>
 
         <li>
-          <a href="./guide_assignment.html" class="nav-item active">
+          <a href="./guide_assignment.html" class="nav-item">
             <i class="fa-solid fa-users"></i>
             Phân công hướng dẫn viên
           </a>
         </li>
 
         <li>
-          <a href="./guide_absences.html" class="nav-item">
+          <a href="./guide_absences.html" class="nav-item active">
             <i class="fa-solid fa-triangle-exclamation"></i>
             Yêu cầu HDV xin nghỉ
             <span data-provider-absence-badge class="provider-absence-nav-badge" hidden>0</span>
@@ -82,10 +83,7 @@
       </ul>
 
       <div class="sidebar-logout">
-        <button
-          type="button"
-          class="sidebar-logout-btn provider-logout-action"
-        >
+        <button type="button" class="sidebar-logout-btn provider-logout-action">
           <i class="fa-solid fa-right-from-bracket"></i>
           Đăng xuất
         </button>
@@ -116,53 +114,50 @@
       </header>
 
       <div class="page-header">
-        <h2>Phân công hướng dẫn viên</h2>
-        <p>Quản lý và phân công HDV cho các tour</p>
+        <h2>Yêu cầu HDV xin nghỉ</h2>
+        <p>Quản lý yêu cầu báo bận khẩn cấp và bố trí HDV thay thế.</p>
       </div>
 
-      <div class="content-grid">
-        <section class="col-card col-card--all">
-          <div class="col-title col-title--compact">
-            <i class="fa-solid fa-users"></i>
-            <span>Tất cả hướng dẫn viên</span>
-            <span id="guideAllCount" class="col-title-badge">0</span>
+      <div class="absence-toolbar">
+        <div class="absence-filter">
+          <button type="button" class="absence-filter__btn is-active" data-filter="pending">
+            Chờ xử lý
+          </button>
+          <button type="button" class="absence-filter__btn" data-filter="approved">
+            Đã duyệt
+          </button>
+          <button type="button" class="absence-filter__btn" data-filter="rejected">
+            Từ chối
+          </button>
+          <button type="button" class="absence-filter__btn" data-filter="all">
+            Tất cả
+          </button>
+        </div>
+        <button type="button" id="refreshAbsenceBtn" class="absence-refresh">
+          <i class="fa-solid fa-rotate"></i> Tải lại
+        </button>
+      </div>
+
+      <div class="absence-layout">
+        <section class="absence-list-card">
+          <div id="absenceList" class="absence-list">
+            <p class="absence-empty">Đang tải...</p>
           </div>
-
-          <p class="guide-list-hint guide-list-hint--compact">
-            Toàn bộ HDV thuộc nhà cung cấp của bạn.
-          </p>
-
-          <div id="guideListAll" class="guide-list guide-list--scroll"></div>
         </section>
 
-        <section class="col-card col-card--suggest">
-          <div class="col-title col-title--compact">
-            <i class="fa-solid fa-sparkles"></i>
-            <span>HDV gợi ý</span>
+        <section class="absence-detail-card" id="absenceDetailCard">
+          <div class="absence-detail-empty">
+            <i class="fa-regular fa-circle-question"></i>
+            <p>Chọn một yêu cầu ở danh sách để xem chi tiết và xử lý.</p>
           </div>
-
-          <p id="guideListHint" class="guide-list-hint guide-list-hint--compact">
-            Chọn tour để xem gợi ý theo lịch rảnh.
-          </p>
-
-          <div id="guideList" class="guide-list guide-list--compact guide-list--scroll"></div>
-        </section>
-
-        <section class="col-card col-card--tours">
-          <div class="col-title">
-            <i class="fa-regular fa-calendar-check"></i>
-            <span>Tour sắp khởi hành</span>
-          </div>
-
-          <div id="tourList" class="tour-list"></div>
         </section>
       </div>
     </main>
 
-        <script src="../../assets/js/auth/account-lock-fetch.js"></script>
+    <script src="../../assets/js/auth/account-lock-fetch.js"></script>
     <script src="../../assets/js/provider/providerFetch.js"></script>
     <script src="../../assets/js/provider/provider-absence-badge.js"></script>
-    <script src="../../assets/js/provider/guide_assignment.js"></script>
+    <script src="../../assets/js/provider/guide_absences.js"></script>
     <script src="../../assets/js/provider/provider-notifications.js"></script>
     <script src="../../assets/js/provider/provider-logout.js"></script>
   </body>

@@ -1,4 +1,7 @@
 import db from "../config/db.js";
+import { createGuideTourAssignedNotification } from "./guideNotificationsModel.js";
+import { logTourGuideHistory } from "./tourGuideHistoryModel.js";
+import { notifyTourCustomers } from "./customerNotificationsModel.js";
 import { getProviderReportOverview } from "./providerReportsModel.js";
 
 function safeJsonParse(value, fallback = []) {
@@ -1361,10 +1364,10 @@ async function assertGuideHasFullAvailabilityForTour(providerId, tourId, guideId
   }
 }
 
-export async function assignGuideToTour(providerId, tourId, guideId) {
+export async function assignGuideToTour(providerId, tourId, guideId, options = {}) {
   const [tourRows] = await db.query(
     `
-    SELECT id
+    SELECT id, guide_id, title
     FROM tours
     WHERE id = ?
       AND provider_id = ?
@@ -1376,6 +1379,9 @@ export async function assignGuideToTour(providerId, tourId, guideId) {
   if (!tourRows.length) {
     throw new Error("Không tìm thấy tour");
   }
+
+  const previousGuideId = tourRows[0].guide_id ?? null;
+  const tourTitle = tourRows[0].title || "Tour";
 
   const [guideRows] = await db.query(
     `
@@ -1425,6 +1431,41 @@ export async function assignGuideToTour(providerId, tourId, guideId) {
     `,
     [tourId, providerId]
   );
+
+  try {
+    await createGuideTourAssignedNotification(guideId, tourId, providerId);
+  } catch (notiErr) {
+    console.error("createGuideTourAssignedNotification:", notiErr);
+  }
+
+  try {
+    await logTourGuideHistory({
+      tourId,
+      guideId,
+      previousGuideId,
+      action: previousGuideId ? "replaced" : "assigned",
+      reason: options.reason || null,
+      byUserId: options.byUserId || null,
+    });
+  } catch (histErr) {
+    console.error("logTourGuideHistory:", histErr);
+  }
+
+  if (
+    previousGuideId != null &&
+    Number(previousGuideId) !== Number(guideId)
+  ) {
+    try {
+      const newGuideName = String(rows[0]?.guide_name || "Hướng dẫn viên mới");
+      await notifyTourCustomers(tourId, {
+        type: "tour_guide_changed",
+        title: "Tour của bạn đã đổi hướng dẫn viên",
+        body: `Tour "${tourTitle}" hiện do HDV ${newGuideName} phụ trách. Mọi vấn đề vui lòng liên hệ nhà cung cấp tour.`,
+      });
+    } catch (notiCustomerErr) {
+      console.error("notifyTourCustomers:", notiCustomerErr);
+    }
+  }
 
   return rows[0] || null;
 }
@@ -1927,11 +1968,85 @@ export async function getProviderNotifications(providerId, limit = 12) {
       id: `guide-complete-${row.id}`,
       type: "guide_tour_completed",
       title: "HDV đã hoàn thành tour",
-      subtitle: `${row.guide_name || "Hướng dẫn viên"} · ${row.title || "Tour"}`,
+      subtitle: `${row.guide_name || "Hướng dẫn viên"} · ${row.title || "Tour"} — Hãy thanh toán hoa hồng HDV`,
       date: toIsoDate(row.guide_completed_at),
       href: "tour_management.html",
       tone: "green",
     });
+  }
+
+  try {
+    const [guideConfirmedRows] = await db.query(
+      `
+      SELECT
+        ge.id, ge.gross_amount, ge.guide_confirmed_at,
+        t.id AS tour_id, t.title AS tour_title,
+        u.full_name AS guide_name
+      FROM guide_earnings ge
+      JOIN tours t ON t.id = ge.tour_id
+      LEFT JOIN guides g ON g.id = ge.guide_id
+      LEFT JOIN users u ON u.id = g.user_id
+      WHERE ge.provider_id = ?
+        AND ge.status = 'guide_confirmed'
+      ORDER BY ge.guide_confirmed_at DESC
+      LIMIT 12
+      `,
+      [providerId],
+    );
+    for (const row of guideConfirmedRows || []) {
+      notifications.push({
+        id: `earning-confirmed-${row.id}`,
+        type: "guide_earning_confirmed",
+        title: "HDV đã xác nhận nhận tiền",
+        subtitle: `${row.guide_name || "HDV"} đã xác nhận khoản thanh toán cho tour "${row.tour_title || ""}"`,
+        date: toIsoDate(row.guide_confirmed_at),
+        href: "tour_management.html",
+        tone: "green",
+      });
+    }
+  } catch (err) {
+    /* commission tables may not exist yet */
+  }
+
+  try {
+    const [absenceRows] = await db.query(
+      `
+      SELECT
+        r.id,
+        r.urgency,
+        r.requested_at,
+        t.title AS tour_title,
+        u.full_name AS guide_name
+      FROM guide_absence_requests r
+      JOIN tours t ON t.id = r.tour_id
+      LEFT JOIN guides g ON g.id = r.guide_id
+      LEFT JOIN users u ON u.id = g.user_id
+      WHERE r.provider_id = ?
+        AND r.status = 'pending'
+      ORDER BY FIELD(r.urgency, 'urgent','medium','low'), r.requested_at DESC
+      LIMIT 12
+      `,
+      [providerId],
+    );
+    for (const row of absenceRows || []) {
+      const urgencyText =
+        row.urgency === "urgent"
+          ? "Khẩn cấp"
+          : row.urgency === "medium"
+            ? "Cần xử lý sớm"
+            : "Mới";
+      notifications.push({
+        id: `absence-${row.id}`,
+        type: "guide_absence_request",
+        title: `HDV xin nghỉ - ${urgencyText}`,
+        subtitle: `${row.guide_name || "Hướng dẫn viên"} · ${row.tour_title || "Tour"}`,
+        date: toIsoDate(row.requested_at),
+        href: "guide_absences.html",
+        tone: row.urgency === "urgent" ? "red" : "orange",
+      });
+    }
+  } catch (absenceErr) {
+    console.warn("provider notifications absence:", absenceErr.message);
   }
 
   notifications.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));

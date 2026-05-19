@@ -276,6 +276,64 @@
               <div class="stat-value" id="statGrowth">0%</div>
               <div class="stat-sub" id="statGrowthSub">-</div>
             </div>
+
+            <div class="stat-card red">
+              <div class="stat-top">
+                <span class="stat-label">Phí sàn nhận được</span>
+                <span class="stat-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
+                </span>
+              </div>
+              <div class="stat-value" id="statCommissionTotal">0</div>
+              <div class="stat-sub" id="statCommissionSub">
+                Phí NCC + Phí partner HDV (đã xác nhận)
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== COMMISSION BREAKDOWN CARD ===== -->
+          <div class="commission-card">
+            <div class="commission-card__head">
+              <div>
+                <h3 class="commission-card__title">Chi tiết hoa hồng theo booking</h3>
+                <p class="commission-card__sub">
+                  Phí sàn của NCC + phí partner của HDV. Mỗi dòng là một booking đã thanh toán.
+                </p>
+              </div>
+              <div class="commission-card__summary" id="commissionSummary"></div>
+            </div>
+            <div class="commission-card__table-wrap">
+              <table class="commission-table">
+                <thead>
+                  <tr>
+                    <th>Booking</th>
+                    <th>Tour</th>
+                    <th>NCC</th>
+                    <th>D (ngày)</th>
+                    <th class="num">Giá booking</th>
+                    <th class="num">% Phí NCC</th>
+                    <th class="num">Tiền NCC</th>
+                    <th class="num">% HDV</th>
+                    <th class="num">HDV gross</th>
+                    <th class="num">6% partner</th>
+                    <th class="num">Sàn nhận</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody id="commissionTableBody">
+                  <tr><td colspan="12" style="text-align:center;padding:20px;color:#9ca3af;">Đang tải...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <!-- ===== CHART ROW ===== -->

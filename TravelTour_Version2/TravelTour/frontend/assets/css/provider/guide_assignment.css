@@ -101,6 +101,7 @@ input {
 .main-content {
   margin-left: var(--sidebar-width);
   flex: 1;
+  min-width: 0;
   padding: 0 30px 30px 30px;
 }
 
@@ -217,14 +218,19 @@ input {
 /* Layout Grid: 2 cột HDV bằng nhau (mỗi ~25%), tour rộng hơn (~50%) */
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) minmax(360px, 2fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
   gap: 16px;
   align-items: start;
+  min-width: 0;
 }
 
 .col-card--all,
 .col-card--suggest {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 200px);
+  overflow: hidden;
 }
 
 /* Column */
@@ -254,6 +260,15 @@ input {
   font-size: 13px;
   margin-bottom: 10px;
   gap: 8px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.col-title--compact > span:first-of-type {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .col-title--compact i {
@@ -286,6 +301,7 @@ input {
   font-size: 11px;
   margin: -2px 0 10px;
   line-height: 1.35;
+  flex-shrink: 0;
 }
 
 .guide-list {
@@ -300,6 +316,20 @@ input {
 
 .guide-list--scroll {
   gap: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.guide-list--scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.guide-list--scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
 }
 
 .col-card--suggest .guide-card {
@@ -338,8 +368,11 @@ input {
   padding: 15px;
   display: flex;
   gap: 15px;
-  align-items: center;
+  align-items: flex-start;
   border: 1px solid #d1fae5;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .guide-card--busy {
@@ -407,6 +440,7 @@ input {
   align-items: center;
   gap: 6px;
   margin: 6px 0 4px;
+  min-width: 0;
 }
 
 .tc-option-suggest-tag {
@@ -532,6 +566,8 @@ input {
 
 .gc-info {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .gc-header {
@@ -540,11 +576,17 @@ input {
   align-items: center;
   margin-bottom: 3px;
   gap: 8px;
+  min-width: 0;
 }
 
 .gc-name {
   font-weight: 600;
   font-size: 14px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gc-rating {
@@ -554,6 +596,7 @@ input {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .gc-rating i {
@@ -565,11 +608,17 @@ input {
   font-size: 12px;
   color: var(--text-muted);
   margin-bottom: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gc-lang {
   font-size: 12px;
   color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Tour card */
@@ -979,15 +1028,19 @@ input {
 
   .col-card--all {
     order: 1;
+    max-height: min(420px, calc(100vh - 200px));
   }
 
   .col-card--suggest {
     order: 2;
+    max-height: min(420px, calc(100vh - 200px));
   }
 
   .col-card--tours {
     grid-column: 1 / -1;
     order: 3;
+    max-height: none;
+    overflow: visible;
   }
 }
 

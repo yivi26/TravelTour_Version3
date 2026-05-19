@@ -16,6 +16,7 @@ import {
   getGuideAssignedToursForCalendar,
   upsertGuideAvailability,
   deleteGuideAvailability,
+  getTourProviderInfoForGuide,
 } from "../models/guideModel.js";
 
 function unlinkLocalAvatarIfExists(storedPath) {
@@ -188,6 +189,67 @@ export async function getGuideDashboardController(req, res) {
     return res.status(500).json({
       message: "Lỗi lấy dashboard guide",
       error: err.sqlMessage || err.message
+    });
+  }
+}
+
+export async function getTourProviderInfoController(req, res) {
+  try {
+    const tourId = Number(req.params.tourId);
+    if (!tourId) {
+      return res.status(400).json({
+        success: false,
+        message: "Tour ID không hợp lệ",
+      });
+    }
+
+    const info = await getTourProviderInfoForGuide(req.guideId, tourId);
+    if (!info) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy thông tin nhà cung cấp cho tour này.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        tour: {
+          id: info.tour_id,
+          title: info.tour_title,
+          location: info.tour_location,
+        },
+        provider: {
+          id: info.provider_id,
+          companyName: info.company_name || "",
+          phone: info.provider_phone || "",
+          hotline: info.provider_hotline || "",
+          email: info.provider_email || "",
+          website: info.provider_website || "",
+          address: info.provider_address || "",
+          description: info.provider_description || "",
+          logoUrl: info.provider_logo || "",
+          taxCode: info.provider_tax_code || "",
+          bank: {
+            name: info.provider_bank_name || "",
+            branch: info.provider_bank_branch || "",
+            accountNumber: info.provider_bank_account_number || "",
+            accountName: info.provider_bank_account_name || "",
+          },
+          contact: {
+            fullName: info.contact_full_name || "",
+            email: info.contact_email || "",
+            phone: info.contact_phone || "",
+            avatar: info.contact_avatar || "",
+          },
+        },
+      },
+    });
+  } catch (err) {
+    console.error("❌ GUIDE TOUR PROVIDER INFO ERROR:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi lấy thông tin nhà cung cấp",
     });
   }
 }

@@ -13,6 +13,10 @@ import {
   deleteCustomerTourReview,
   getCustomerTourReviewContextController,
 } from "../controllers/customerController.js";
+import {
+  getCustomerNotificationsController,
+  markCustomerNotificationsReadController,
+} from "../controllers/customerNotificationsController.js";
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -25,6 +29,9 @@ router.delete("/reviews/:reviewId", requireCustomerRole, deleteCustomerTourRevie
 router.get("/profile", getCustomerProfile);
 router.put("/profile", updateCustomerProfile);
 router.put("/change-password", changePassword);
+
+router.get("/notifications", getCustomerNotificationsController);
+router.patch("/notifications/read", markCustomerNotificationsReadController);
 
 router.post("/avatar", uploadAvatar.single("avatar"), updateCustomerAvatar);
 router.delete("/avatar", deleteCustomerAvatar);

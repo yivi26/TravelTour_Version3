@@ -28,3 +28,13 @@ export function getAvatarsDir() {
   }
   return dir;
 }
+
+/** Thư mục lưu ảnh xác minh báo bận của HDV. */
+export function getAbsenceEvidenceDir() {
+  const root = getResolvedUploadsDir();
+  const dir = path.join(root, "absence-evidence");
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}

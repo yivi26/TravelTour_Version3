@@ -32,6 +32,19 @@ import {
 } from "../controllers/providerController.js";
 import { getProviderTourProgressController } from "../controllers/tourProgressController.js";
 import uploadTourImages from "../middleware/uploadTourImages.js";
+import {
+  listProviderAbsenceController,
+  countPendingProviderAbsenceController,
+  getReplacementCandidatesController,
+  approveProviderAbsenceController,
+  rejectProviderAbsenceController,
+  cancelTourForAbsenceController,
+} from "../controllers/guideAbsenceController.js";
+import {
+  providerCommissionSummaryController,
+  providerTourPayableGuideController,
+  providerMarkEarningPaidController,
+} from "../controllers/commissionController.js";
 
 const router = express.Router();
 
@@ -95,6 +108,37 @@ protectedRouter.post("/bookings/:id/approve-cancel", approveBookingCancelControl
 protectedRouter.get("/guides", getAllGuides);
 protectedRouter.post("/assign-guide-to-tour", assignGuideToTourController);
 protectedRouter.post("/unassign-guide-from-tour", unassignGuideFromTourController);
+protectedRouter.get(
+  "/absence-requests/pending-count",
+  countPendingProviderAbsenceController,
+);
+protectedRouter.get("/absence-requests", listProviderAbsenceController);
+protectedRouter.get(
+  "/tours/:tourId/replacement-candidates",
+  getReplacementCandidatesController,
+);
+protectedRouter.post(
+  "/absence-requests/:id/approve",
+  approveProviderAbsenceController,
+);
+protectedRouter.post(
+  "/absence-requests/:id/reject",
+  rejectProviderAbsenceController,
+);
+protectedRouter.post(
+  "/absence-requests/:id/cancel-tour",
+  cancelTourForAbsenceController,
+);
+
+protectedRouter.get("/commissions/summary", providerCommissionSummaryController);
+protectedRouter.get(
+  "/tours/:tourId/payable-guide",
+  providerTourPayableGuideController,
+);
+protectedRouter.post(
+  "/guide-earnings/:earningId/mark-paid",
+  providerMarkEarningPaidController,
+);
 
 router.use(protectedRouter);
 

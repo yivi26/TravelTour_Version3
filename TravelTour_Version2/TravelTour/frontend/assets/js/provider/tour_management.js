@@ -526,7 +526,148 @@ function closeTourProgressModal() {
   document.documentElement.classList.remove("tp-modal-open");
 }
 
-function renderProviderProgressBody(data) {
+function formatVnd(value) {
+  return new Intl.NumberFormat("vi-VN").format(Number(value || 0)) + " đ";
+}
+
+function payoutStatusLabel(s) {
+  const map = {
+    pending_payout: { label: "Chờ thanh toán", cls: "pending" },
+    provider_marked_paid: { label: "Chờ HDV xác nhận", cls: "waiting" },
+    guide_confirmed: { label: "HDV đã xác nhận", cls: "confirmed" },
+    cancelled: { label: "Đã hủy", cls: "cancelled" },
+  };
+  return map[s] || { label: s || "-", cls: "pending" };
+}
+
+function renderProviderPayablePanel(payable) {
+  if (!payable || !payable.guide_completed_at) {
+    return `
+      <div class="tp-payable tp-payable--empty">
+        Tour chưa hoàn thành — chưa hiển thị khoản thanh toán HDV.
+      </div>`;
+  }
+  if (!payable.guide) {
+    return `
+      <div class="tp-payable tp-payable--empty">
+        Tour đã hoàn thành nhưng chưa phân công HDV cuối.
+      </div>`;
+  }
+  const totals = payable.totals || {};
+  const bank = payable.guide.bank || {};
+  const hasBank = bank.account_number && bank.account_name;
+
+  const itemsHtml = (payable.earnings || [])
+    .map((e) => {
+      const st = payoutStatusLabel(e.status);
+      const buttons =
+        e.status === "pending_payout"
+          ? `<button type="button"
+                class="tp-payable__btn tp-payable__btn--pay"
+                data-pay-earning="${e.id}"
+                data-tour-id="${payable.tour_id}">Đánh dấu đã thanh toán</button>`
+          : e.status === "provider_marked_paid"
+            ? `<span class="tp-payable__note">Đợi HDV xác nhận đã nhận</span>`
+            : `<span class="tp-payable__note">Đã hoàn tất</span>`;
+      return `
+        <tr>
+          <td>${escapeHtml(e.booking_code || "#" + e.booking_id)}</td>
+          <td>${escapeHtml(e.contact_name || "-")}</td>
+          <td class="num">${formatVnd(e.base_amount)}</td>
+          <td class="num"><strong>${formatVnd(e.gross_amount)}</strong></td>
+          <td><span class="tp-payable__status ${st.cls}">${st.label}</span></td>
+          <td>${buttons}</td>
+        </tr>`;
+    })
+    .join("");
+
+  return `
+    <div class="tp-payable">
+      <div class="tp-payable__header">
+        <div>
+          <strong>Thanh toán hoa hồng HDV</strong>
+          <p>Tour đã hoàn thành — vui lòng chuyển khoản cho HDV theo thông tin bên dưới.</p>
+        </div>
+        <div class="tp-payable__totals">
+          <span>Tổng gross</span>
+          <strong>${formatVnd(totals.gross || 0)}</strong>
+        </div>
+      </div>
+
+      <div class="tp-payable__bank">
+        <div class="tp-payable__bank-title">Tài khoản ngân hàng của HDV (${escapeHtml(payable.guide.name || "")})</div>
+        ${
+          hasBank
+            ? `<ul class="tp-payable__bank-list">
+                 <li><span>Ngân hàng</span><strong>${escapeHtml(bank.name || "")}</strong></li>
+                 <li><span>Số tài khoản</span><strong>${escapeHtml(bank.account_number || "")}</strong></li>
+                 <li><span>Chủ tài khoản</span><strong>${escapeHtml(bank.account_name || "")}</strong></li>
+                 ${bank.branch ? `<li><span>Chi nhánh</span><strong>${escapeHtml(bank.branch)}</strong></li>` : ""}
+               </ul>`
+            : `<p class="tp-payable__bank-warn">HDV chưa cập nhật STK. Hãy yêu cầu HDV cập nhật trong "Hồ sơ cá nhân" trước khi thanh toán.</p>`
+        }
+      </div>
+
+      <div class="tp-payable__table-wrap">
+        <table class="tp-payable__table">
+          <thead>
+            <tr>
+              <th>Booking</th>
+              <th>Khách</th>
+              <th class="num">Giá tour</th>
+              <th class="num">Hoa hồng HDV</th>
+              <th>Trạng thái</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>${itemsHtml || `<tr><td colspan="6" style="text-align:center;padding:14px;color:#9ca3af;">Chưa có khoản nào</td></tr>`}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+async function loadPayableGuide(tourId) {
+  try {
+    const res = await fetch(`/api/provider/tours/${encodeURIComponent(tourId)}/payable-guide`, {
+      headers: providerAuthHeaders(),
+      cache: "no-store",
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.message || "Lỗi tải thông tin thanh toán HDV");
+    return json.data;
+  } catch (err) {
+    console.warn("loadPayableGuide:", err);
+    return null;
+  }
+}
+
+async function handleMarkEarningPaid(earningId, tourId) {
+  const paymentRef = window.prompt(
+    "Nhập mã/ghi chú giao dịch (không bắt buộc):",
+    "",
+  );
+  if (paymentRef === null) return;
+  try {
+    const res = await fetch(
+      `/api/provider/guide-earnings/${encodeURIComponent(earningId)}/mark-paid`,
+      {
+        method: "POST",
+        headers: providerAuthHeaders(),
+        body: JSON.stringify({ paymentRef }),
+      },
+    );
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.message || "Đánh dấu thất bại");
+    alert(json.message || "Đã đánh dấu đã thanh toán, chờ HDV xác nhận.");
+    const payable = await loadPayableGuide(tourId);
+    const payableHost = document.getElementById("tpPayablePanel");
+    if (payableHost) payableHost.innerHTML = renderProviderPayablePanel(payable);
+  } catch (err) {
+    alert(err.message || "Không thực hiện được");
+  }
+}
+
+function renderProviderProgressBody(data, payable) {
   const { tour, days, completed_activity_ids, stats, updated_at } = data;
   const completedSet = new Set(completed_activity_ids || []);
   const guideLabel = tour.guide_name
@@ -570,12 +711,15 @@ function renderProviderProgressBody(data) {
         .join("")
     : `<p class="tp-empty">Tour chưa có lịch trình chi tiết.</p>`;
 
+  const payableHtml = renderProviderPayablePanel(payable);
+
   return `
     <p class="tp-summary-meta">${guideLabel} · ${escapeHtml(updatedLabel)}</p>
     <div class="tp-stats">
       <article class="tp-stat"><span>Đã hoàn thành</span><strong>${stats.done} / ${stats.total}</strong></article>
       <article class="tp-stat"><span>Tiến độ tổng</span><strong>${stats.percent}%</strong></article>
     </div>
+    <div id="tpPayablePanel">${payableHtml}</div>
     <div class="tp-scroll">${daysHtml}</div>
   `;
 }
@@ -614,7 +758,8 @@ async function viewTourProgress(tourId) {
     if (!res.ok) {
       throw new Error(result.message || "Không tải được tiến độ tour");
     }
-    bodyEl.innerHTML = renderProviderProgressBody(result.data);
+    const payable = await loadPayableGuide(tourId);
+    bodyEl.innerHTML = renderProviderProgressBody(result.data, payable);
   } catch (err) {
     console.error(err);
     bodyEl.innerHTML = `<p class="tp-empty tp-empty--error">${escapeHtml(err.message || "Có lỗi xảy ra")}</p>`;
@@ -625,6 +770,13 @@ function bindProgressModalEvents() {
   document.addEventListener("click", (event) => {
     if (event.target.closest("[data-close-tp-modal]")) {
       closeTourProgressModal();
+    }
+    const payBtn = event.target.closest("[data-pay-earning]");
+    if (payBtn) {
+      event.preventDefault();
+      const eid = Number(payBtn.getAttribute("data-pay-earning"));
+      const tid = Number(payBtn.getAttribute("data-tour-id"));
+      if (eid && tid) handleMarkEarningPaid(eid, tid);
     }
   });
   document.addEventListener("keydown", (event) => {

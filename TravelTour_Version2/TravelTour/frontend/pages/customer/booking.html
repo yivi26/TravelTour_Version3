@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="../../assets/css/customer/customer.css" />
     <link rel="stylesheet" href="../../assets/css/customer/customer-site-nav.css" />
     <link rel="stylesheet" href="../../assets/css/customer/booking.css" />
+    <link
+      rel="stylesheet"
+      href="../../assets/css/customer/customer-notifications.css"
+    />
   </head>
   <body>
     <script src="../../assets/js/customer/mount-customer-navbar.js"></script>
@@ -51,6 +55,30 @@
             <section class="page-header booking-page-header">
               <h1>Booking của tôi</h1>
               <p>Quản lý các chuyến đi sắp tới của bạn</p>
+            </section>
+
+            <section
+              id="customerNotificationsPanel"
+              class="customer-notifications"
+              hidden
+            >
+              <div class="customer-notifications__head">
+                <div>
+                  <h2>Thông báo từ nhà cung cấp</h2>
+                  <p>Cập nhật mới nhất về các tour bạn đã đặt.</p>
+                </div>
+                <button
+                  type="button"
+                  id="markAllNotificationsRead"
+                  class="customer-notifications__mark"
+                >
+                  Đánh dấu đã đọc tất cả
+                </button>
+              </div>
+              <div
+                id="customerNotificationsList"
+                class="customer-notifications__list"
+              ></div>
             </section>
 
             <!-- Statistics -->
@@ -113,6 +141,7 @@
     <script src="../../assets/js/auth/navbar-avatar.js"></script>
     <script src="../../assets/js/auth/public-navbar-auth.js"></script>
     <script src="../../assets/js/customer/customerTopbarSync.js"></script>
+    <script src="../../assets/js/customer/customer-notifications.js"></script>
     <script src="../../assets/js/customer/booking.js"></script>
   </body>
 </html>

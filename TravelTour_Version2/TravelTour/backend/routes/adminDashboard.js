@@ -31,6 +31,10 @@ import {
   deleteAdminReviewController
 } from "../controllers/adminReviewsController.js";
 import { getAdminReportsOverviewController } from "../controllers/adminReportsController.js";
+import {
+  adminCommissionOverviewController,
+  adminCommissionBreakdownController,
+} from "../controllers/commissionController.js";
 
 const router = express.Router();
 
@@ -54,6 +58,8 @@ router.get("/reviews/:id", getAdminReviewDetailController);
 router.patch("/reviews/:id/status", patchAdminReviewStatusController);
 router.delete("/reviews/:id", deleteAdminReviewController);
 router.get("/reports/overview", getAdminReportsOverviewController);
+router.get("/commissions/overview", adminCommissionOverviewController);
+router.get("/commissions/breakdown", adminCommissionBreakdownController);
 
 export default router;
 

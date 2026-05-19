@@ -1,0 +1,420 @@
+.absence-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 14px;
+  flex-wrap: wrap;
+}
+
+.absence-filter {
+  display: inline-flex;
+  gap: 6px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 999px;
+}
+
+.absence-filter__btn {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.absence-filter__btn.is-active {
+  background: #16a34a;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.25);
+}
+
+.absence-refresh {
+  border: 1px solid #cbd5f5;
+  border-radius: 999px;
+  background: #fff;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #1e293b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.absence-refresh:hover {
+  background: #f8fafc;
+}
+
+.absence-badge {
+  display: inline-flex;
+  margin-left: 6px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.absence-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) 1fr;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.absence-list-card,
+.absence-detail-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  padding: 14px;
+  min-height: 480px;
+}
+
+.absence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: calc(100vh - 260px);
+  overflow: auto;
+}
+
+.absence-empty {
+  margin: 0;
+  text-align: center;
+  color: #64748b;
+  padding: 28px 12px;
+  font-size: 14px;
+}
+
+.absence-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: 0.15s ease;
+}
+
+.absence-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5f5;
+}
+
+.absence-item.is-active {
+  background: #ecfdf5;
+  border-color: #16a34a;
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.16);
+}
+
+.absence-item__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.absence-item__guide {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.absence-item__tour {
+  font-size: 13px;
+  color: #475569;
+}
+
+.absence-item__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+  flex-wrap: wrap;
+}
+
+.absence-item__time {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.absence-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.absence-tag.is-urgent {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.absence-tag.is-medium {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.absence-tag.is-low {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.absence-tag.is-pending {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.absence-tag.is-approved {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.absence-tag.is-rejected {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.absence-tag.is-cancelled {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.absence-detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  color: #94a3b8;
+  gap: 14px;
+  padding: 40px 16px;
+}
+
+.absence-detail-empty i {
+  font-size: 36px;
+  color: #cbd5f5;
+}
+
+.absence-detail__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.absence-detail__header h3 {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.absence-detail__contact {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.absence-detail__contact a {
+  color: #16a34a;
+  text-decoration: none;
+}
+
+.absence-detail__contact a:hover {
+  text-decoration: underline;
+}
+
+.absence-detail__tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.absence-detail__tour {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.absence-detail__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.absence-detail__field span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.absence-detail__field strong {
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.absence-detail__reason {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.absence-detail__reason h4,
+.absence-detail__action h4,
+.absence-detail__resolved h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.absence-detail__reason p {
+  margin: 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.absence-detail__evidence {
+  font-size: 13px;
+  color: #1d4ed8;
+}
+
+.absence-detail__action,
+.absence-detail__resolved {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.absence-detail__action .absence-detail__field {
+  margin-bottom: 12px;
+}
+
+.absence-detail__action label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.absence-detail__action select,
+.absence-detail__action textarea {
+  width: 100%;
+  border: 1px solid #cbd5f5;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #fff;
+  color: #0f172a;
+}
+
+.absence-detail__action select:focus,
+.absence-detail__action textarea:focus {
+  outline: none;
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
+}
+
+.absence-detail__hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.absence-detail__error {
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.absence-detail__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.absence-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.absence-btn--reject {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.absence-btn--reject:hover {
+  background: #e2e8f0;
+}
+
+.absence-btn--approve {
+  background: #16a34a;
+  color: #fff;
+}
+
+.absence-btn--approve:hover {
+  background: #15803d;
+}
+
+.absence-btn--danger {
+  background: #fff;
+  border: 1.5px solid #fecaca;
+  color: #b91c1c;
+}
+
+.absence-btn--danger:hover {
+  background: #fee2e2;
+}
+
+.absence-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.absence-detail__resolved p {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #475569;
+}
+
+@media (max-width: 1024px) {
+  .absence-layout {
+    grid-template-columns: 1fr;
+  }
+  .absence-list {
+    max-height: none;
+  }
+}

@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import { createGuideEarningsForCompletedTour } from "./commissionModel.js";
 
 function toLocalYmd(value) {
   if (value == null || value === "") return null;
@@ -348,6 +349,13 @@ export async function completeTourForGuide(guideId, tourId) {
 
   await restoreGuideAvailabilityForTour(guideId, tour.start_date, tour.end_date);
 
+  let earningsResult = { created: 0 };
+  try {
+    earningsResult = await createGuideEarningsForCompletedTour(tourId);
+  } catch (err) {
+    console.error("createGuideEarningsForCompletedTour:", err);
+  }
+
   const [guideRows] = await db.query(
     `
     SELECT u.full_name AS guide_name
@@ -366,5 +374,6 @@ export async function completeTourForGuide(guideId, tourId) {
     guide_name: guideRows[0]?.guide_name || "Hướng dẫn viên",
     guide_completed_at: new Date().toISOString(),
     stats,
+    earnings: earningsResult,
   };
 }
