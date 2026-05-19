@@ -337,6 +337,12 @@
           const tbody = document.querySelector("#guideTable tbody");
           if (!tbody || !Array.isArray(state.guides)) return;
 
+          if (!state.guides.length) {
+            tbody.innerHTML =
+              '<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8;">Chưa có hướng dẫn viên nào.</td></tr>';
+            return;
+          }
+
           tbody.innerHTML = state.guides
             .map((guide) => {
               const initials = getInitials(guide.name || "");
@@ -556,7 +562,15 @@
             renderAll();
           } catch (err) {
             console.error(err);
-            renderAll(); // fallback data cứng
+            state.stats = [];
+            state.guides = [];
+            state.paging = {
+              page: 1,
+              totalPages: 1,
+              pages: [1],
+              text: "Không tải được dữ liệu",
+            };
+            renderAll();
           }
         }
 
@@ -737,7 +751,6 @@
           });
         }
 
-        renderAll();
         bindSearch();
         bindPaging();
         bindActions();

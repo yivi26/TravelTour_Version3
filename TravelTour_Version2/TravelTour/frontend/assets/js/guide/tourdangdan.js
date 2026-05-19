@@ -1375,7 +1375,7 @@ async function completeGuideTour(tourId) {
   if (
     !(await showAppConfirm(
       "Xác nhận hoàn thành tour?\n\nNhà cung cấp sẽ nhận thông báo và các booking liên quan sẽ được cập nhật trạng thái hoàn thành.",
-    )
+    ))
   ) {
     return;
   }

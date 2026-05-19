@@ -101,7 +101,7 @@
             <header class="lt-page-header">
               <div>
                 <h1>Lịch trình của tôi</h1>
-                <p>Đăng ký ngày rảnh, xem lịch và tour được phân công</p>
+                <p>Đăng ký ngày rảnh, xem lịch và lịch sử tour đã dẫn</p>
               </div>
               <div class="lt-legend">
                 <span class="lt-legend-item"><i class="lt-dot lt-dot--free"></i> Rảnh</span>
@@ -118,9 +118,9 @@
                 <i class="ti ti-calendar-plus"></i>
                 Đăng ký ngày rảnh
               </button>
-              <button type="button" class="lt-tab" data-tab="assigned" role="tab" aria-selected="false">
-                <i class="ti ti-map-pin"></i>
-                Tour được phân công
+              <button type="button" class="lt-tab" data-tab="history" role="tab" aria-selected="false">
+                <i class="ti ti-history"></i>
+                Lịch sử tour đã dẫn
               </button>
             </nav>
 
@@ -200,8 +200,8 @@
               <div id="ltScheduleList" class="lt-schedule-list"></div>
             </section>
 
-            <section id="ltPanelAssigned" class="lt-panel" role="tabpanel" hidden>
-              <div id="ltAssignedList" class="lt-assigned-list"></div>
+            <section id="ltPanelHistory" class="lt-panel" role="tabpanel" hidden>
+              <div id="ltLedHistoryList" class="lt-history-list"></div>
             </section>
 
             <div id="ltToast" class="lt-toast" role="status" aria-live="polite" hidden></div>

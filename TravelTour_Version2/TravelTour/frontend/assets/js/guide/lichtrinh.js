@@ -1,5 +1,6 @@
 let availability = [];
 let assignedTours = [];
+let ledTourHistory = [];
 let schedules = [];
 let selectedDates = new Set();
 /** @type {"register" | "unregister" | null} */
@@ -65,6 +66,23 @@ function formatDateVN(dateString) {
   const date = parseDateKey(key);
   if (Number.isNaN(date.getTime())) return "--/--/----";
   return date.toLocaleDateString("vi-VN");
+}
+
+function formatDateTimeVN(dateString) {
+  if (!dateString) return "--";
+  const text = String(dateString).trim();
+  const normalized = text.includes(" ")
+    ? text.replace(" ", "T")
+    : text;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return formatDateVN(dateString);
+  return date.toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function formatTimeRange(startDate, endDate) {
@@ -336,7 +354,7 @@ function switchTab(tabName) {
 
   const panels = {
     register: document.getElementById("ltPanelRegister"),
-    assigned: document.getElementById("ltPanelAssigned"),
+    history: document.getElementById("ltPanelHistory"),
   };
 
   Object.entries(panels).forEach(([name, panel]) => {
@@ -346,7 +364,7 @@ function switchTab(tabName) {
     panel.hidden = !active;
   });
 
-  if (tabName === "assigned") renderAssignedList();
+  if (tabName === "history") renderLedTourHistoryList();
 }
 
 async function fetchAvailabilityBundle() {
@@ -364,6 +382,14 @@ async function fetchAvailabilityBundle() {
   availability = normalizeAvailabilityRows(data.availability);
   assignedTours = Array.isArray(data.assignedTours)
     ? data.assignedTours.map((tour) => ({
+        ...tour,
+        startDate: normalizeDateKey(tour.startDate),
+        endDate: normalizeDateKey(tour.endDate),
+        guideCompletedAt: tour.guideCompletedAt || null,
+      }))
+    : [];
+  ledTourHistory = Array.isArray(data.ledTourHistory)
+    ? data.ledTourHistory.map((tour) => ({
         ...tour,
         startDate: normalizeDateKey(tour.startDate),
         endDate: normalizeDateKey(tour.endDate),
@@ -483,37 +509,19 @@ async function deleteAvailability(id, options = {}) {
   }
 }
 
-function renderAssignedList() {
-  const container = document.getElementById("ltAssignedList");
+function renderLedTourHistoryList() {
+  const container = document.getElementById("ltLedHistoryList");
   if (!container) return;
 
-  const list = assignedTours.length ? assignedTours : schedules;
-
-  if (!list.length) {
-    container.innerHTML =
-      '<div class="lt-empty">Chưa có tour được phân công.</div>';
+  if (!ledTourHistory.length) {
+    container.innerHTML = '<div class="lt-empty">Chưa có tour đã dẫn.</div>';
     return;
   }
 
-  container.innerHTML = list
+  container.innerHTML = ledTourHistory
     .map((item) => {
       const focused =
         urlTourHighlightId != null && Number(item.id) === urlTourHighlightId;
-      const statusText =
-        item.status ||
-        (item.type === "running"
-          ? "Đang diễn ra"
-          : item.type === "done"
-            ? "Đã xong"
-            : "Sắp diễn ra");
-      const badgeClass =
-        item.type === "running"
-          ? "lt-badge--running"
-          : item.type === "awaiting_departure"
-            ? "lt-badge--awaiting"
-          : item.type === "done"
-            ? "lt-badge--done"
-            : "lt-badge--upcoming";
 
       return `
         <article class="lt-item${focused ? " lt-item--focused" : ""}">
@@ -521,14 +529,14 @@ function renderAssignedList() {
             <div>
               <div class="lt-item-title">${item.tourName || item.title || "Tour"}</div>
               <div class="lt-item-meta">
-                <span><i class="ti ti-calendar"></i>${formatDateVN(item.startDate)}</span>
-                <span><i class="ti ti-clock"></i>${formatTimeRange(item.startDate, item.endDate)}</span>
+                <span><i class="ti ti-calendar"></i>${formatDateVN(item.startDate)} – ${formatDateVN(item.endDate)}</span>
                 <span><i class="ti ti-map-pin"></i>${item.location || "Chưa cập nhật"}</span>
                 <span><i class="ti ti-users"></i>${item.customers || 0} khách</span>
+                <span><i class="ti ti-circle-check"></i>Hoàn thành: ${formatDateTimeVN(item.guideCompletedAt)}</span>
               </div>
             </div>
             <div class="lt-item-actions">
-              <span class="lt-badge ${badgeClass}">${statusText}</span>
+              <span class="lt-badge lt-badge--done">${item.status || "Đã hoàn thành"}</span>
               <button type="button" class="lt-link" data-tour-id="${item.id}">Xem chi tiết →</button>
             </div>
           </div>
@@ -674,10 +682,10 @@ async function initPage() {
 
     renderCalendar();
     renderSelectedChips();
-    renderAssignedList();
+    renderLedTourHistoryList();
 
     if (urlTourHighlightId != null) {
-      switchTab("assigned");
+      switchTab("history");
     }
   } catch (error) {
     console.error("Lỗi tải lịch trình:", error);

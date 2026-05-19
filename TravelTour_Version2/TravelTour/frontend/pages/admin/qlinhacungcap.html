@@ -302,6 +302,12 @@
           const tbody = document.querySelector("#supplierTable tbody");
           if (!tbody || !Array.isArray(state.suppliers)) return;
 
+          if (!state.suppliers.length) {
+            tbody.innerHTML =
+              '<tr><td colspan="5" style="text-align:center;padding:24px;color:#94a3b8;">Chưa có nhà cung cấp nào.</td></tr>';
+            return;
+          }
+
           tbody.innerHTML = state.suppliers
             .map((supplier) => {
               const statusClass = [
@@ -429,7 +435,15 @@
             renderAll();
           } catch (err) {
             console.error(err);
-            renderAll(); // fallback data cứng
+            state.stats = [];
+            state.suppliers = [];
+            state.paging = {
+              page: 1,
+              totalPages: 1,
+              pages: [1],
+              text: "Không tải được dữ liệu",
+            };
+            renderAll();
           }
         }
 
@@ -609,7 +623,6 @@
           });
         }
 
-        renderAll();
         bindSearch();
         bindPaging();
         bindProviderDocsModal();

@@ -1,6 +1,7 @@
 import db from "../config/db.js";
 import bcrypt from "bcryptjs";
 import { buildPages, normalizeKeyword, toNumber } from "../utils/modelHelpers.js";
+import { getSystemGuideProviderId } from "./providerModel.js";
 
 function mapRole(role) {
   const r = String(role || "").toLowerCase();
@@ -244,23 +245,12 @@ export async function createPartnerUser({ full_name, email, password, role, prov
 
   let guideProviderId = null;
   if (r === "guide") {
-    let pid = toNumber(provider_id, 0);
-    if (!pid) {
-      const [[firstProv]] = await db.query(
-        `SELECT id FROM providers ORDER BY id ASC LIMIT 1`,
-      );
-      pid = toNumber(firstProv?.id, 0);
-    }
-    if (!pid) {
-      const err = new Error(
-        "Chưa có nhà cung cấp trong hệ thống — không thể tạo hướng dẫn viên. Hãy tạo tài khoản Provider trước.",
-      );
-      err.statusCode = 400;
-      throw err;
-    }
+    const pid = getSystemGuideProviderId();
     const [[prov]] = await db.query(`SELECT id FROM providers WHERE id = ? LIMIT 1`, [pid]);
     if (!prov?.id) {
-      const err = new Error("Nhà cung cấp không tồn tại");
+      const err = new Error(
+        "Chưa có nhà cung cấp hệ thống (SYSTEM_GUIDE_PROVIDER_ID) — hãy tạo ít nhất một NCC hoặc cấu hình .env.",
+      );
       err.statusCode = 400;
       throw err;
     }

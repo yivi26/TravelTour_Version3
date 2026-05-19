@@ -146,7 +146,10 @@
 
   const bookingList = document.getElementById("bookingList");
   if (bookingList && Array.isArray(data.bookings)) {
-    bookingList.innerHTML = data.bookings
+    if (!data.bookings.length) {
+      bookingList.innerHTML =
+        '<p style="padding:16px;color:#94a3b8;text-align:center;">Chưa có booking gần đây.</p>';
+    } else bookingList.innerHTML = data.bookings
       .map((item) => {
         const initials = (item.name || "")
           .split(" ")
@@ -172,9 +175,19 @@
       .join("");
   }
 
+  const searchInput = document.querySelector(
+    '.topbar .search input[type="search"]',
+  );
+  if (window.AdminCommon?.bindAdminGlobalSearch) {
+    window.AdminCommon.bindAdminGlobalSearch(searchInput);
+  }
+
   const toursList = document.getElementById("popularTours");
   if (toursList && Array.isArray(data.popularTours)) {
-    toursList.innerHTML = data.popularTours
+    if (!data.popularTours.length) {
+      toursList.innerHTML =
+        '<p style="padding:16px;color:#94a3b8;text-align:center;">Chưa có tour phổ biến.</p>';
+    } else toursList.innerHTML = data.popularTours
       .map(
         (item) => `<div class="tour-row">
             <div class="rank">${item.rank ?? ""}</div>

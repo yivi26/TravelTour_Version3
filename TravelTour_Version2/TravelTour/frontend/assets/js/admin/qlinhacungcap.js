@@ -1,3 +1,4 @@
+/** Nav + user mặc định; danh sách NCC lấy từ API (inline trong qlinhacungcap.html). */
 window.quanLyNhaCungCapTourData = {
   nav: [
     { label: "Tổng quan", href: "tongquan.html" },
@@ -11,71 +12,7 @@ window.quanLyNhaCungCapTourData = {
     { label: "Cài đặt hệ thống", href: "caidat.html" },
   ],
   user: { name: "Admin User", email: "admin@traveltour.vn", initials: "AD" },
-  stats: [
-    { label: "Tổng nhà cung cấp", value: "87", tone: "neutral" },
-    {
-      label: "Đã phê duyệt",
-      value: "72",
-      note: "+5 so với tháng trước",
-      tone: "approved",
-    },
-    {
-      label: "Chờ phê duyệt",
-      value: "15",
-      note: "Yêu cầu phê duyệt mới",
-      tone: "pending",
-    },
-  ],
-  suppliers: [
-    {
-      name: "Du lịch Bình Minh",
-      email: "lienhe@binhminh.vn",
-      tours: 45,
-      status: "Đã phê duyệt",
-      statusKey: "approved",
-    },
-    {
-      name: "Hành Trình Xanh",
-      email: "hello@hanhtrinhxanh.vn",
-      tours: 38,
-      status: "Đã phê duyệt",
-      statusKey: "approved",
-    },
-    {
-      name: "Du lịch Đại Dương",
-      email: "support@daiduong.vn",
-      tours: 29,
-      status: "Chờ phê duyệt",
-      statusKey: "pending",
-    },
-    {
-      name: "Hành Trình Di Sản",
-      email: "sales@disan.vn",
-      tours: 33,
-      status: "Đã phê duyệt",
-      statusKey: "approved",
-    },
-    {
-      name: "Tầm Nhìn Núi",
-      email: "info@tamnhinnu.vn",
-      tours: 21,
-      status: "Đã phê duyệt",
-      statusKey: "approved",
-    },
-    {
-      name: "Ánh Đèn Phố",
-      email: "contact@anhdenpho.vn",
-      tours: 18,
-      status: "Chờ phê duyệt",
-      statusKey: "pending",
-    },
-    {
-      name: "Dòng Sông Xanh",
-      email: "team@dongsongxanh.vn",
-      tours: 14,
-      status: "Chờ phê duyệt",
-      statusKey: "pending",
-    },
-  ],
-  paging: { text: "Hiển thị 1-7 trong 87 nhà cung cấp", pages: [1, 2, 3] },
+  stats: [],
+  suppliers: [],
+  paging: { page: 1, totalPages: 1, pages: [1], text: "" },
 };
