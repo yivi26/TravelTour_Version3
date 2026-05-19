@@ -76,8 +76,7 @@ export function isTourInOperationalWindow(row, todayYmd = toLocalYmd(new Date())
 }
 
 /**
- * Chặn thao tác vận hành tour (tiến độ / hoàn thành) khi đã đến ngày khởi hành
- * nhưng chưa đủ >50% khách hoặc chưa có HDV.
+ * Chặn thao tác vận hành tour (tiến độ / hoàn thành) khi chưa đủ >50% khách hoặc chưa có HDV.
  */
 export async function assertTourDepartureAllowedForOperations(tourId) {
   const row = await getTourDepartureRow(tourId);
@@ -87,23 +86,13 @@ export async function assertTourDepartureAllowedForOperations(tourId) {
     throw err;
   }
 
-  const todayYmd = toLocalYmd(new Date());
-  if (!isTourInOperationalWindow(row, todayYmd)) {
-    return buildTourDeparturePayload(row);
-  }
-
-  const eligibility = evaluateTourDepartureEligibility({
-    maxCapacity: row.max_capacity,
-    bookedParticipants: row.booked_participants,
-    guideId: row.guide_id,
-  });
-
-  if (!eligibility.canDepart) {
-    const err = new Error(formatTourDepartureBlockMessage(eligibility));
+  const payload = buildTourDeparturePayload(row);
+  if (!payload.can_depart) {
+    const err = new Error(formatTourDepartureBlockMessage(payload));
     err.statusCode = 400;
-    err.departureEligibility = buildTourDeparturePayload(row);
+    err.departureEligibility = payload;
     throw err;
   }
 
-  return buildTourDeparturePayload(row);
+  return payload;
 }

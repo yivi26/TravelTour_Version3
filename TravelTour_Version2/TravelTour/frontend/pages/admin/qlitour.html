@@ -299,6 +299,12 @@
           const tbody = document.querySelector("#tourTable tbody");
           if (!tbody || !Array.isArray(state.tours)) return;
 
+          if (!state.tours.length) {
+            tbody.innerHTML =
+              '<tr><td colspan="7" style="text-align:center;padding:24px;color:#94a3b8;">Chưa có tour nào.</td></tr>';
+            return;
+          }
+
           tbody.innerHTML = state.tours
             .map((tour) => {
               const initials = getInitials(tour.name || "");
@@ -517,7 +523,15 @@
             renderAll();
           } catch (err) {
             console.error(err);
-            renderAll(); // fallback data cứng
+            state.stats = [];
+            state.tours = [];
+            state.paging = {
+              page: 1,
+              totalPages: 1,
+              pages: [1],
+              text: "Không tải được dữ liệu tour",
+            };
+            renderAll();
           }
         }
 
@@ -581,7 +595,6 @@
           });
         }
 
-        renderAll();
         bindSearch();
         bindPaging();
         bindActions();

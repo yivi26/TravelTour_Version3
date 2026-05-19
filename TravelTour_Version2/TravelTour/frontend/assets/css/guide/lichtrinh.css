@@ -506,7 +506,8 @@
 }
 
 .lt-schedule-list,
-.lt-assigned-list {
+.lt-assigned-list,
+.lt-history-list {
   display: flex;
   flex-direction: column;
   gap: 12px;

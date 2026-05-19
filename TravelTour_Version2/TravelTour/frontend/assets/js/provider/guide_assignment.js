@@ -956,7 +956,7 @@ function renderAllGuides(data) {
   }
 
   if (!Array.isArray(data) || data.length === 0) {
-    container.innerHTML = `<div class="empty-state">Chưa có hướng dẫn viên.</div>`;
+    container.innerHTML = `<div class="empty-state">Chưa có hướng dẫn viên active trên hệ thống. Liên hệ quản trị để tạo tài khoản HDV.</div>`;
     return;
   }
 
@@ -978,7 +978,7 @@ function renderTours(data) {
   if (!container) return;
 
   if (!Array.isArray(data) || data.length === 0) {
-    container.innerHTML = `<div class="empty-state">Không tìm thấy tour phù hợp.</div>`;
+    container.innerHTML = `<div class="empty-state">Không tìm thấy tour phù hợp. Vào <strong>Quản lý tour</strong> để tạo tour trước khi phân công HDV.</div>`;
     return;
   }
 
@@ -1203,7 +1203,7 @@ async function handleUnassign(tourId) {
   if (
     !(await showAppConfirm(
       `Bỏ phân công "${tour.assignedGuideName || "hướng dẫn viên"}" khỏi tour "${tour.title}"?`,
-    )
+    ))
   ) {
     return;
   }

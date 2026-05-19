@@ -829,6 +829,31 @@ export async function getGuideAssignedToursForCalendar(guideId) {
   return rows;
 }
 
+/** Tour HDV đã dẫn xong (guide_completed_at có giá trị). */
+export async function getGuideLedTourHistory(guideId) {
+  const [rows] = await db.query(
+    `
+    SELECT
+      t.id,
+      t.title,
+      t.location,
+      DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date,
+      DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date,
+      DATE_FORMAT(t.guide_completed_at, '%Y-%m-%d %H:%i:%s') AS guide_completed_at,
+      t.max_capacity,
+      t.status,
+      COALESCE(bp.booked_participants, 0) AS booked_participants
+    FROM tours t
+    ${BOOKED_PARTICIPANTS_JOIN}
+    WHERE t.guide_id = ?
+      AND t.guide_completed_at IS NOT NULL
+    ORDER BY t.guide_completed_at DESC, t.id DESC
+    `,
+    [guideId]
+  );
+  return rows;
+}
+
 export async function upsertGuideAvailability(guideId, payload = {}) {
   const dates = Array.isArray(payload.dates) ? payload.dates : [];
   const timeFrom = String(payload.timeFrom || "08:00").slice(0, 5);

@@ -14,6 +14,7 @@ import {
   getGuideUserId,
   getGuideAvailabilityList,
   getGuideAssignedToursForCalendar,
+  getGuideLedTourHistory,
   upsertGuideAvailability,
   deleteGuideAvailability,
   getTourCustomersForGuide,
@@ -236,6 +237,7 @@ export async function getGuideAvailabilityController(req, res) {
   try {
     const availability = await getGuideAvailabilityList(req.guideId);
     const tours = await getGuideAssignedToursForCalendar(req.guideId);
+    const ledHistory = await getGuideLedTourHistory(req.guideId);
 
     const data = {
       availability: availability.map((row) => ({
@@ -254,6 +256,17 @@ export async function getGuideAvailabilityController(req, res) {
         location: tour.location || "Chưa cập nhật",
         customers: Number(tour.max_capacity || 0),
         status: tour.status,
+      })),
+      ledTourHistory: ledHistory.map((tour) => ({
+        id: Number(tour.id),
+        tourName: tour.title || "Chưa có tên tour",
+        startDate: toLocalYmd(tour.start_date),
+        endDate: toLocalYmd(tour.end_date),
+        location: tour.location || "Chưa cập nhật",
+        customers: Number(tour.booked_participants || tour.max_capacity || 0),
+        guideCompletedAt: tour.guide_completed_at || null,
+        type: "done",
+        status: "Đã hoàn thành",
       })),
     };
 

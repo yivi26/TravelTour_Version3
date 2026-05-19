@@ -964,6 +964,12 @@ function buildScheduleConflictMessage(
   return `Tour "${newName}" phải bắt đầu từ ${formatDateVNFromYmd(minNewStart)} trở đi (sau tour "${otherName}" kết thúc ${formatDateVNFromYmd(e2)}, cần ít nhất 1 ngày nghỉ).`;
 }
 
+/** FK legacy trên guides.provider_id — HDV thuộc pool hệ thống (cột chỉ để thỏa schema). */
+export function getSystemGuideProviderId() {
+  const n = Number(process.env.SYSTEM_GUIDE_PROVIDER_ID || 1);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
 async function getAssignedToursByGuideMap() {
   const statusPlaceholders = GUIDE_ACTIVE_TOUR_STATUSES.map(() => "?").join(", ");
   const [rows] = await db.query(
@@ -1084,6 +1090,7 @@ function computeScheduleMatchFromFreeDates(freeDates, tourDays) {
   };
 }
 
+/** Danh sách HDV active trên toàn hệ thống (mọi NCC đều phân công được). */
 export async function getGuides() {
   const statusPlaceholders = GUIDE_ACTIVE_TOUR_STATUSES.map(() => "?").join(", ");
   const [rows] = await db.query(

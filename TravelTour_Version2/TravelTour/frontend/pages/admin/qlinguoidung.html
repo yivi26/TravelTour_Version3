@@ -340,6 +340,7 @@
       </div>
     </div>
 
+    <script src="../../assets/js/admin/admin-common.js"></script>
     <script src="../../assets/js/admin/qlinguoidung.js"></script>
     <script src="../../assets/js/admin/thongbao.js"></script>
     <script src="../../assets/js/admin/logout.js"></script>
@@ -887,6 +888,10 @@
 
           const searchInput = document.querySelector(".search input[type='search']");
           if (searchInput) {
+            const qFromUrl =
+              window.AdminCommon?.applySearchFromUrl?.(searchInput) || "";
+            if (qFromUrl) state.q = qFromUrl;
+
             const onSearch = debounce(() => {
               state.q = String(searchInput.value || "").trim();
               state.page = 1;
@@ -983,14 +988,12 @@
         }
         loadAndRender().catch((err) => {
           console.error(err);
-          // fallback to hard-coded data if API fails
-          const fallback = window.quanLyNguoiDungData || {};
           render({
-            nav: Array.isArray(fallback.nav) ? fallback.nav : DEFAULT_NAV,
-            user: fallback.user || DEFAULT_USER,
-            stats: fallback.stats || [],
-            users: fallback.users || [],
-            paging: fallback.paging || { text: "", pages: [1], page: 1 }
+            nav: DEFAULT_NAV,
+            user: DEFAULT_USER,
+            stats: [],
+            users: [],
+            paging: { text: "Không tải được dữ liệu", pages: [1], page: 1, totalPages: 1 },
           });
           syncFilterButton();
         });
