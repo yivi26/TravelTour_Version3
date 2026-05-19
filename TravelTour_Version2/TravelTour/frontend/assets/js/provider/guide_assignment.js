@@ -209,6 +209,137 @@ function closeAllGuideDropdowns() {
   });
 }
 
+/** HDV để hiện modal: ưu tiên bản đã enrich theo tour đang chọn (cột gợi ý). */
+function resolveGuideForDetailModal(guideId) {
+  const base = getGuideById(Number(guideId));
+  if (!base) return null;
+  const tour = getTourById(getActiveSuggestTourId());
+  if (tour) return enrichGuideForActiveTour({ ...base });
+  return { ...base };
+}
+
+function fileNameFromUrl(url) {
+  if (!url) return "CV.pdf";
+  const parts = String(url).split("/");
+  return parts[parts.length - 1] || "CV.pdf";
+}
+
+function isPdfFileUrl(url) {
+  return /\.pdf$/i.test(String(url || "").split("?")[0]);
+}
+
+function buildGuideCvSection(cvUrl) {
+  const resolved = resolveGuideAvatarUrl(cvUrl);
+  if (!resolved) {
+    return `
+      <section class="guide-detail-cv">
+        <h4 class="guide-detail-cv__title">CV (Hồ sơ tài liệu)</h4>
+        <p class="guide-detail-muted">HDV chưa tải CV trong mục <strong>Hồ sơ tài liệu</strong> ở trang hồ sơ cá nhân.</p>
+      </section>
+    `;
+  }
+
+  const fileName = fileNameFromUrl(resolved);
+  const pdfPreview = isPdfFileUrl(resolved)
+    ? `<iframe
+        class="guide-detail-cv__frame"
+        src="${escapeHtml(resolved)}"
+        title="CV ${escapeHtml(fileName)}"
+      ></iframe>`
+    : "";
+
+  return `
+    <section class="guide-detail-cv">
+      <h4 class="guide-detail-cv__title">CV (Hồ sơ tài liệu)</h4>
+      <p class="guide-detail-modal__lead">
+        Tài liệu được lấy từ hồ sơ cá nhân của hướng dẫn viên (mục Hồ sơ tài liệu).
+      </p>
+      <div class="guide-detail-cv__actions">
+        <a
+          class="guide-detail-cv__link"
+          href="${escapeHtml(resolved)}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+          Mở / tải CV (${escapeHtml(fileName)})
+        </a>
+      </div>
+      ${pdfPreview}
+    </section>
+  `;
+}
+
+function buildGuideDetailModalContent(guide, documents = {}) {
+  const ratingLine = guide.ratingHasScore
+    ? `${escapeHtml(String(guide.rating))} / 5`
+    : escapeHtml(guide.rating);
+
+  return `
+    <dl class="guide-detail-dl guide-detail-dl--compact">
+      <dt>Họ tên</dt>
+      <dd>${escapeHtml(guide.name)}</dd>
+      <dt>Đánh giá</dt>
+      <dd>${ratingLine}</dd>
+      <dt>Kinh nghiệm</dt>
+      <dd>${escapeHtml(guide.experience)}</dd>
+      <dt>Chuyên môn</dt>
+      <dd>${escapeHtml(guide.specialty)}</dd>
+      <dt>Trạng thái</dt>
+      <dd>${escapeHtml(guide.availabilityLabel)}</dd>
+    </dl>
+    ${buildGuideCvSection(documents.cvFileUrl)}
+  `;
+}
+
+async function fetchGuideDocumentsForProvider(guideId) {
+  const response = await fetch(
+    `/api/provider/guides/${encodeURIComponent(guideId)}/documents`,
+    { method: "GET", headers: providerAuthHeaders() },
+  );
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.message || "Không tải được CV hướng dẫn viên");
+  }
+  return result.data || {};
+}
+
+async function openGuideDetailModal(guideId) {
+  const guide = resolveGuideForDetailModal(guideId);
+  const modal = document.getElementById("guideDetailModal");
+  const body = document.getElementById("guideDetailModalBody");
+  const titleEl = document.getElementById("guideDetailModalTitle");
+  if (!guide || !modal || !body || !titleEl) return;
+
+  titleEl.textContent = guide.name || "CV hướng dẫn viên";
+  body.innerHTML =
+    '<p class="guide-detail-muted guide-detail-loading">Đang tải CV...</p>';
+  modal.hidden = false;
+  document.body.style.overflow = "hidden";
+
+  const closeBtn = modal.querySelector(".guide-detail-modal__close");
+  closeBtn?.focus?.();
+
+  try {
+    const documents = await fetchGuideDocumentsForProvider(guideId);
+    titleEl.textContent = documents.fullName || guide.name || "CV hướng dẫn viên";
+    body.innerHTML = buildGuideDetailModalContent(guide, documents);
+  } catch (error) {
+    console.error("openGuideDetailModal:", error);
+    body.innerHTML = `
+      <p class="guide-detail-muted">${escapeHtml(error.message || "Không tải được CV")}</p>
+      ${buildGuideCvSection("")}
+    `;
+  }
+}
+
+function closeGuideDetailModal() {
+  const modal = document.getElementById("guideDetailModal");
+  if (!modal || modal.hidden) return;
+  modal.hidden = true;
+  document.body.style.overflow = "";
+}
+
 function initGuideDropdowns() {
   document.querySelectorAll(".tc-custom-select").forEach((root) => {
     const trigger = root.querySelector(".tc-select-trigger");
@@ -381,6 +512,35 @@ function computeGuideMatchForTour(guide, tour, tourId) {
   };
 }
 
+/** Chuỗi chuyên môn từ cột guides.specialty (thường là danh sách phân tách bằng dấu phẩy). */
+function formatGuideSpecialtyField(value) {
+  if (value == null || value === "") return "Chưa cập nhật";
+  const parts = String(value)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!parts.length) return "Chưa cập nhật";
+  return parts.join(", ");
+}
+
+/** Điểm sao chỉ hiển thị số khi đã có đánh giá (rating_count > 0). */
+function formatGuideRatingFields(guide) {
+  const count = Number(guide.rating_count ?? 0);
+  const avgRaw =
+    guide.rating_avg != null && guide.rating_avg !== ""
+      ? Number(guide.rating_avg)
+      : NaN;
+  if (count > 0 && !Number.isNaN(avgRaw)) {
+    return { ratingText: avgRaw.toFixed(1), ratingHasScore: true };
+  }
+  const legacy =
+    guide.rating != null && guide.rating !== "" ? Number(guide.rating) : NaN;
+  if (!Number.isNaN(legacy) && legacy > 0) {
+    return { ratingText: legacy.toFixed(1), ratingHasScore: true };
+  }
+  return { ratingText: "Chưa có đánh giá", ratingHasScore: false };
+}
+
 function normalizeGuide(guide) {
   const currentTourId = guide.active_tour_id != null ? Number(guide.active_tour_id) : null;
   const currentTourTitle = guide.active_tour_title || "";
@@ -404,19 +564,19 @@ function normalizeGuide(guide) {
     ? `Chưa đủ ngày rảnh (${activeTourMatchedDays}/${activeTourTotalDays} ngày)`
     : "";
 
+  const { ratingText, ratingHasScore } = formatGuideRatingFields(guide);
+
   return {
     id: Number(guide.id),
     name: guide.full_name || "Chưa có tên",
     avatarUrl: guide.avatar_url || "",
-    rating:
-      guide.rating_avg != null
-        ? Number(guide.rating_avg).toFixed(1)
-        : guide.rating || "N/A",
+    rating: ratingText,
+    ratingHasScore,
     experience:
       guide.experience_years != null
         ? `${guide.experience_years} năm`
         : guide.experience || "Chưa cập nhật",
-    languages: guide.languages || "Chưa cập nhật",
+    specialty: formatGuideSpecialtyField(guide.specialty),
     isOnTour,
     hasInvalidActiveTour,
     currentTourId,
@@ -729,7 +889,15 @@ function buildGuideCardHtml(guide, options = {}) {
       <div class="gc-info">
         <div class="gc-header">
           <span class="gc-name">${escapeHtml(guide.name)}</span>
-          <span class="gc-rating"><i class="fa-solid fa-star"></i> ${guide.rating}</span>
+          <span class="gc-rating${guide.ratingHasScore ? "" : " gc-rating--empty"}" title="${
+            guide.ratingHasScore
+              ? "Điểm trung bình từ đánh giá của khách"
+              : "HDV chưa có đánh giá từ khách (hoặc hệ thống chưa ghi nhận)"
+          }">${
+            guide.ratingHasScore
+              ? `<i class="fa-solid fa-star"></i> ${escapeHtml(String(guide.rating))}`
+              : escapeHtml(guide.rating)
+          }</span>
         </div>
         <div class="gc-status-row">
           <span class="gc-status-badge ${
@@ -751,8 +919,12 @@ function buildGuideCardHtml(guide, options = {}) {
               </div>`
             : ""
         }
-        <div class="gc-exp">${escapeHtml(guide.experience)}</div>
-        <div class="gc-lang">${escapeHtml(guide.languages)}</div>
+        <div class="gc-exp"><span class="gc-meta-label">Kinh nghiệm</span> ${escapeHtml(guide.experience)}</div>
+        <div class="gc-specialty"><span class="gc-meta-label">Chuyên môn</span> ${escapeHtml(guide.specialty)}</div>
+        <button type="button" class="gc-detail-btn" data-guide-detail="${guide.id}">
+          <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+          Thông tin chi tiết
+        </button>
       </div>
     </div>
   `;
@@ -971,7 +1143,7 @@ function getFilteredData() {
   let filteredGuides = guidesData.filter((guide) => {
     return (
       guide.name.toLowerCase().includes(keyword) ||
-      String(guide.languages).toLowerCase().includes(keyword) ||
+      String(guide.specialty).toLowerCase().includes(keyword) ||
       String(guide.experience).toLowerCase().includes(keyword) ||
       String(guide.rating).toLowerCase().includes(keyword) ||
       String(guide.availabilityLabel).toLowerCase().includes(keyword) ||
@@ -1003,7 +1175,7 @@ function getFilteredData() {
   let filteredAll = guidesDataAll.filter((guide) => {
     return (
       guide.name.toLowerCase().includes(keyword) ||
-      String(guide.languages).toLowerCase().includes(keyword) ||
+      String(guide.specialty).toLowerCase().includes(keyword) ||
       String(guide.experience).toLowerCase().includes(keyword) ||
       String(guide.rating).toLowerCase().includes(keyword) ||
       String(guide.availabilityLabel).toLowerCase().includes(keyword) ||
@@ -1029,7 +1201,7 @@ async function handleUnassign(tourId) {
   }
 
   if (
-    !window.confirm(
+    !(await showAppConfirm(
       `Bỏ phân công "${tour.assignedGuideName || "hướng dẫn viên"}" khỏi tour "${tour.title}"?`,
     )
   ) {
@@ -1111,6 +1283,19 @@ function bindEvents() {
   }
 
   document.addEventListener("click", function (event) {
+    const dismissGuide = event.target.closest("[data-guide-detail-dismiss]");
+    if (dismissGuide) {
+      closeGuideDetailModal();
+      return;
+    }
+
+    const detailBtn = event.target.closest("[data-guide-detail]");
+    if (detailBtn) {
+      event.stopPropagation();
+      openGuideDetailModal(detailBtn.getAttribute("data-guide-detail"));
+      return;
+    }
+
     if (!event.target.closest(".tc-custom-select")) {
       closeAllGuideDropdowns();
     }
@@ -1143,7 +1328,13 @@ function bindEvents() {
   });
 
   document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape") closeAllGuideDropdowns();
+    if (event.key !== "Escape") return;
+    const modal = document.getElementById("guideDetailModal");
+    if (modal && !modal.hidden) {
+      closeGuideDetailModal();
+      return;
+    }
+    closeAllGuideDropdowns();
   });
 }
 

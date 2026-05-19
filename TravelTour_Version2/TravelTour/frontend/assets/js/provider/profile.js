@@ -9,14 +9,9 @@ const formIds = {
   businessLicense: "businessLicense",
   companyDescription: "companyDescription",
   phone: "phone",
-  hotline: "hotline",
   contactEmail: "contactEmail",
   address: "address",
   website: "website",
-  bankName: "bankName",
-  bankBranch: "bankBranch",
-  bankAccountNumber: "bankAccountNumber",
-  bankAccountName: "bankAccountName"
 };
 
 function getElement(id) {
@@ -90,6 +85,15 @@ function getInputValue(id) {
   return element ? element.value.trim() : "";
 }
 
+function resolveFileUrl(url) {
+  if (!url) return "";
+  const text = String(url).trim();
+  if (!text) return "";
+  if (text.startsWith("http://") || text.startsWith("https://")) return text;
+  if (text.startsWith("/")) return text;
+  return `/${text.replace(/^\/+/, "")}`;
+}
+
 function renderCertificates(certificates) {
   const container = getElement("certificateList");
   if (!container) return;
@@ -108,17 +112,22 @@ function renderCertificates(certificates) {
   }
 
   container.innerHTML = certificates
-    .map(
-      (item) => `
-        <div class="cert-item">
-          <div class="cert-icon"><i class="fa-solid fa-ribbon"></i></div>
-          <div class="cert-info">
-            <div class="c-name">${escapeHtml(item.name || "Chứng nhận")}</div>
-            <div class="c-status">${escapeHtml(item.status || "Đang cập nhật")}</div>
-          </div>
+    .map((item) => {
+      const name = escapeHtml(item.name || "Chứng nhận");
+      const status = escapeHtml(item.status || "Đang cập nhật");
+      const fileUrl = resolveFileUrl(item.fileUrl);
+      const inner = `
+        <div class="cert-icon"><i class="fa-solid fa-ribbon"></i></div>
+        <div class="cert-info">
+          <div class="c-name">${name}</div>
+          <div class="c-status">${status}</div>
         </div>
-      `
-    )
+      `;
+      if (fileUrl) {
+        return `<a class="cert-item cert-item--link" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener noreferrer" title="Xem tài liệu PDF">${inner}</a>`;
+      }
+      return `<div class="cert-item">${inner}</div>`;
+    })
     .join("");
 }
 
@@ -147,14 +156,9 @@ function renderProfile(profile) {
   setInputValue(formIds.businessLicense, profile.businessLicense);
   setInputValue(formIds.companyDescription, profile.companyDescription);
   setInputValue(formIds.phone, profile.phone);
-  setInputValue(formIds.hotline, profile.hotline);
   setInputValue(formIds.contactEmail, profile.contactEmail);
   setInputValue(formIds.address, profile.address);
   setInputValue(formIds.website, profile.website);
-  setInputValue(formIds.bankName, profile.bankName);
-  setInputValue(formIds.bankBranch, profile.bankBranch);
-  setInputValue(formIds.bankAccountNumber, profile.bankAccountNumber);
-  setInputValue(formIds.bankAccountName, profile.bankAccountName);
 
   const summaryCompanyName = getElement("summaryCompanyName");
   const summaryProviderType = getElement("summaryProviderType");
@@ -207,6 +211,7 @@ function renderProfile(profile) {
 }
 
 function collectFormData() {
+  const prev = originalProfileData || {};
   return {
     companyName: getInputValue(formIds.companyName),
     companyShortName: getInputValue(formIds.companyShortName),
@@ -214,15 +219,15 @@ function collectFormData() {
     businessLicense: getInputValue(formIds.businessLicense),
     companyDescription: getInputValue(formIds.companyDescription),
     phone: getInputValue(formIds.phone),
-    hotline: getInputValue(formIds.hotline),
     contactEmail: getInputValue(formIds.contactEmail),
     address: getInputValue(formIds.address),
     website: getInputValue(formIds.website),
-    bankName: getInputValue(formIds.bankName),
-    bankBranch: getInputValue(formIds.bankBranch),
-    bankAccountNumber: getInputValue(formIds.bankAccountNumber),
-    bankAccountName: getInputValue(formIds.bankAccountName),
-    logoFileName: selectedLogoFile ? selectedLogoFile.name : null
+    hotline: prev.hotline || prev.phone || "",
+    bankName: prev.bankName || "",
+    bankBranch: prev.bankBranch || "",
+    bankAccountNumber: prev.bankAccountNumber || "",
+    bankAccountName: prev.bankAccountName || "",
+    logoFileName: selectedLogoFile ? selectedLogoFile.name : null,
   };
 }
 

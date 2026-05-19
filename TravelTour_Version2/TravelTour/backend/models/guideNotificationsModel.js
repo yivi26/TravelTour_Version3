@@ -23,6 +23,74 @@ export async function ensureGuideNotificationsTable() {
   tableReady = true;
 }
 
+export async function createGuideNotification({
+  guideId,
+  tourId,
+  providerId = null,
+  type,
+  title,
+  body,
+}) {
+  const gid = Number(guideId);
+  const tid = Number(tourId);
+  if (!gid || !tid || !title || !body) return null;
+
+  await ensureGuideNotificationsTable();
+
+  const [result] = await db.query(
+    `
+    INSERT INTO guide_notifications
+      (guide_id, tour_id, provider_id, type, title, body, is_read)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
+    `,
+    [gid, tid, providerId ? Number(providerId) : null, type, title, body],
+  );
+
+  return { id: result.insertId, guide_id: gid, tour_id: tid, title, body };
+}
+
+/** HDV báo bận: NCC duyệt có người thay / không có người thay. */
+export async function createGuideAbsenceOutcomeNotification(
+  guideId,
+  tourId,
+  providerId,
+  outcome,
+) {
+  const tid = Number(tourId);
+  const gid = Number(guideId);
+  if (!gid || !tid) return null;
+
+  const [[tourRow]] = await db.query(
+    `SELECT title FROM tours WHERE id = ? LIMIT 1`,
+    [tid],
+  );
+  const tourTitle = String(tourRow?.title || "Tour").trim();
+
+  if (outcome === "approved_replacement") {
+    return createGuideNotification({
+      guideId: gid,
+      tourId: tid,
+      providerId,
+      type: "absence_approved",
+      title: "Yêu cầu báo bận khẩn cấp",
+      body: `Yêu cầu báo bận khẩn cấp của bạn đã được chấp nhận. Tour "${tourTitle}" đã có HDV thay thế.`,
+    });
+  }
+
+  if (outcome === "no_replacement") {
+    return createGuideNotification({
+      guideId: gid,
+      tourId: tid,
+      providerId,
+      type: "absence_no_replacement",
+      title: "Yêu cầu báo bận khẩn cấp",
+      body: `Không tìm được Hướng dẫn viên phù hợp. Bạn không còn dẫn tour "${tourTitle}".`,
+    });
+  }
+
+  return null;
+}
+
 export async function createGuideTourAssignedNotification(
   guideId,
   tourId,

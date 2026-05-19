@@ -1,6 +1,9 @@
 import { toNumber } from "../utils/modelHelpers.js";
 import {
   getTourReviewSummaryAndList,
+  getTourGuideReviewSummaryAndList,
+  getPaginatedTourReviews,
+  getPaginatedGuideReviews,
   findEligibleBookingForReview,
   getCustomerReviewBlockReason,
   shouldShowTourReviewsSection,
@@ -42,7 +45,12 @@ function viewerReviewContext(user, tourId) {
 export async function getPublicTourReviewsController(req, res) {
   try {
     const tourId = req.params.tourId || req.params.id;
-    const data = await getTourReviewSummaryAndList(tourId);
+    const viewingUserId = req.user?.id ? toNumber(req.user.id, 0) : null;
+    const previewLimit = 1;
+    const [data, guideReviews] = await Promise.all([
+      getTourReviewSummaryAndList(tourId, { limit: previewLimit, viewingUserId }),
+      getTourGuideReviewSummaryAndList(tourId, { limit: previewLimit, viewingUserId }),
+    ]);
 
     const base = viewerReviewContext(req.user, tourId);
     let viewer = { ...base, showSection: true };
@@ -51,42 +59,12 @@ export async function getPublicTourReviewsController(req, res) {
     const role = String(req.user?.role || "").toLowerCase();
 
     if (role === "customer" && req.user?.id) {
-      const showSection = await shouldShowTourReviewsSection(
+      const showComposeSection = await shouldShowTourReviewsSection(
         req.user.id,
         tourId,
         contextBookingId
       );
-      viewer.showSection = showSection;
-      if (!showSection) {
-        return res.status(200).json({
-          success: true,
-          data: {
-            tourId: toNumber(tourId),
-            summary: { average: 0, total: 0, distribution: [] },
-            reviews: [],
-            viewer: {
-              ...viewer,
-              canPost: false,
-              hasEligibleBooking: false,
-              postBlockedReason: null,
-            },
-          },
-        });
-      }
-    } else if (!req.user?.id) {
-      viewer.showSection = false;
-      return res.status(200).json({
-        success: true,
-        data: {
-          tourId: toNumber(tourId),
-          summary: { average: 0, total: 0, distribution: [] },
-          reviews: [],
-          viewer: { ...viewer, canPost: false, hasEligibleBooking: false },
-        },
-      });
-    }
 
-    if (req.user?.id && role === "customer") {
       const hasEligible = !!(await findEligibleBookingForReview(req.user.id, tourId, {
         bookingId: contextBookingId,
       }));
@@ -94,9 +72,12 @@ export async function getPublicTourReviewsController(req, res) {
       const pendingCount = await countPendingReviewsOnTour(req.user.id, tourId);
       const blockedByPending = pendingCount > 0;
 
-      let canPost = hasEligible && !blockedByPending;
+      let canPost = showComposeSection && hasEligible && !blockedByPending;
       let postBlockedReason = null;
-      if (!hasEligible) {
+      if (!showComposeSection) {
+        canPost = false;
+        postBlockedReason = null;
+      } else if (!hasEligible) {
         postBlockedReason = await getCustomerReviewBlockReason(
           req.user.id,
           tourId,
@@ -109,7 +90,8 @@ export async function getPublicTourReviewsController(req, res) {
 
       viewer = {
         role: "customer",
-        showSection: viewer.showSection !== false,
+        showSection: true,
+        showComposeSection,
         hasEligibleBooking: hasEligible,
         myReview,
         canPost,
@@ -119,13 +101,37 @@ export async function getPublicTourReviewsController(req, res) {
 
     return res.status(200).json({
       success: true,
-      data: { ...data, viewer },
+      data: { ...data, guideReviews, viewer },
     });
   } catch (err) {
     const code = err.statusCode || 500;
     return res.status(code).json({
       success: false,
       message: err.message || "Không tải được đánh giá",
+    });
+  }
+}
+
+/** Phân trang đánh giá (modal): ?scope=tour|guide&page=1&pageSize=10 */
+export async function getPublicTourReviewsPageController(req, res) {
+  try {
+    const tourId = req.params.tourId || req.params.id;
+    const scope = String(req.query.scope || "tour").toLowerCase() === "guide" ? "guide" : "tour";
+    const page = toNumber(req.query.page, 1);
+    const pageSize = toNumber(req.query.pageSize, 10);
+    const viewingUserId = req.user?.id ? toNumber(req.user.id, 0) : null;
+
+    const payload =
+      scope === "guide"
+        ? await getPaginatedGuideReviews(tourId, { page, pageSize, viewingUserId })
+        : await getPaginatedTourReviews(tourId, { page, pageSize, viewingUserId });
+
+    return res.status(200).json({ success: true, data: { scope, ...payload } });
+  } catch (err) {
+    const code = err.statusCode || 500;
+    return res.status(code).json({
+      success: false,
+      message: err.message || "Không tải được danh sách đánh giá",
     });
   }
 }

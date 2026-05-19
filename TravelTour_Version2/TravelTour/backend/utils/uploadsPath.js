@@ -38,3 +38,23 @@ export function getAbsenceEvidenceDir() {
   }
   return dir;
 }
+
+/** Hợp đồng (Word) và CV (PDF) của HDV — admin upload. */
+export function getGuideDocumentsDir() {
+  const root = getResolvedUploadsDir();
+  const dir = path.join(root, "guide-documents");
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+/** Hợp đồng & giấy chứng nhận (PDF) của NCC — admin upload. */
+export function getProviderDocumentsDir() {
+  const root = getResolvedUploadsDir();
+  const dir = path.join(root, "provider-documents");
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}

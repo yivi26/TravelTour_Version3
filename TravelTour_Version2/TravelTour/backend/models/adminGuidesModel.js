@@ -96,6 +96,8 @@ export async function listGuides({ page = 1, pageSize = 7, q = "" } = {}) {
       g.user_id,
       g.status AS guide_status,
       g.rating_avg,
+      g.contract_file_url,
+      g.cv_file_url,
       u.full_name,
       u.phone,
       u.email,
@@ -159,7 +161,9 @@ export async function listGuides({ page = 1, pageSize = 7, q = "" } = {}) {
       tourCount: tourCountsMap.get(gid) || 0,
       rating: String(r.rating_avg ?? "0.0"),
       is_active: toNumber(r.is_active) === 1,
-      status: r.guide_status || "active"
+      status: r.guide_status || "active",
+      contractFileUrl: r.contract_file_url || "",
+      cvFileUrl: r.cv_file_url || "",
     };
   });
 

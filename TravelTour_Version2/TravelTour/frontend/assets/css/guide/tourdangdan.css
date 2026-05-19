@@ -138,6 +138,17 @@
   color: #1d4ed8;
 }
 
+.tour-depart-block {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .tour-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -281,17 +292,6 @@
   background: #f8fafc;
 }
 
-.btn-contact--provider {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-  color: #047857;
-}
-
-.btn-contact--provider:hover {
-  background: #d1fae5;
-  border-color: #6ee7b7;
-}
-
 .btn-absence {
   border: 1.5px solid #fecaca;
   border-radius: 12px;
@@ -385,6 +385,17 @@
   margin: 0 0 10px;
   color: #475569;
   font-size: 13px;
+}
+
+.absence-consent__text {
+  margin: 0 0 20px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #334155;
+}
+
+.absence-modal--consent .absence-modal__dialog {
+  max-width: 480px;
 }
 
 .absence-modal__hint {
@@ -563,223 +574,223 @@
   cursor: progress;
 }
 
-.provider-contact-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 10001;
+/* ===== Tour contact panel (Liên hệ khách) ===== */
+.tour-contact-panel {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  min-height: 520px;
+  max-height: calc(100vh - 200px);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  opacity: 0;
-  transition: opacity 0.18s ease;
+  flex-direction: column;
+  padding: 20px 22px;
+  box-shadow: 0 6px 22px rgba(15, 23, 42, 0.06);
 }
 
-.provider-contact-modal.is-visible {
-  opacity: 1;
-}
-
-.provider-contact-modal[hidden] {
+.tour-contact-panel[hidden] {
   display: none !important;
 }
 
-.provider-contact-modal__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(2px);
+.tour-contact__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.provider-contact-modal__dialog {
-  position: relative;
-  width: min(520px, 100%);
-  max-height: calc(100vh - 32px);
-  overflow: auto;
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.25);
-  padding: 24px;
-  transform: scale(0.96);
-  transition: transform 0.18s ease;
+.tour-contact__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
 }
 
-.provider-contact-modal.is-visible .provider-contact-modal__dialog {
-  transform: scale(1);
+.tour-contact__subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #64748b;
 }
 
-.provider-contact-modal__close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
+.tour-contact__close {
+  background: #f1f5f9;
+  color: #475569;
+  border: none;
   width: 32px;
   height: 32px;
-  border: none;
   border-radius: 50%;
-  background: #f1f5f9;
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
-  color: #475569;
 }
 
-.provider-contact-modal__close:hover {
+.tour-contact__close:hover {
   background: #e2e8f0;
 }
 
-.provider-contact-modal__header {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  padding-right: 32px;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 16px;
-  margin-bottom: 16px;
-}
-
-.provider-contact-modal__logo {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  object-fit: cover;
-  flex-shrink: 0;
-  background: #ecfdf5;
-}
-
-.provider-contact-modal__logo--placeholder {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  font-weight: 700;
-  color: #047857;
-  background: #ecfdf5;
-}
-
-.provider-contact-modal__title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-  line-height: 1.3;
-  margin: 0 0 4px;
-}
-
-.provider-contact-modal__tour {
-  font-size: 13px;
-  color: #64748b;
-  margin: 0;
-}
-
-.provider-contact-modal__desc {
-  font-size: 13px;
-  color: #475569;
-  line-height: 1.55;
-  margin: 0 0 16px;
-}
-
-.provider-contact-modal__list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.provider-contact-modal__row {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #f8fafc;
-  text-decoration: none;
-  color: inherit;
-  transition: background 0.15s ease;
-}
-
-a.provider-contact-modal__row:hover {
-  background: #ecfdf5;
-}
-
-.provider-contact-modal__icon {
-  flex-shrink: 0;
-  font-size: 18px;
-  line-height: 1.2;
-}
-
-.provider-contact-modal__row > div {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.provider-contact-modal__label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #94a3b8;
-  margin-bottom: 2px;
-}
-
-.provider-contact-modal__row strong {
-  font-size: 14px;
-  color: #0f172a;
-  word-break: break-word;
-}
-
-.provider-contact-modal__sub {
-  font-size: 12px;
-  color: #64748b;
-  margin-top: 2px;
-}
-
-.provider-contact-modal__line {
-  display: block;
-  line-height: 1.4;
-}
-
-.provider-contact-modal__footer {
+.tour-contact__stats {
   display: flex;
   gap: 10px;
-  margin-top: 18px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
-.provider-contact-modal__cta {
-  flex: 1 1 auto;
-  text-align: center;
-  padding: 11px 14px;
-  border-radius: 12px;
-  background: #16a34a;
-  color: #fff;
-  font-weight: 700;
-  font-size: 14px;
-  text-decoration: none;
-  transition: background 0.15s ease;
-}
-
-.provider-contact-modal__cta:hover {
-  background: #15803d;
-}
-
-.provider-contact-modal__cta--outline {
+.tour-contact__stat {
   background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 8px 12px;
+  min-width: 120px;
+}
+
+.tour-contact__stat span {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.tour-contact__stat strong {
+  font-size: 18px;
   color: #047857;
-  border: 1.5px solid #16a34a;
 }
 
-.provider-contact-modal__cta--outline:hover {
+.tour-contact__scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  flex: 1;
+}
+
+.tour-contact__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  min-width: 640px;
+}
+
+.tour-contact__table thead th {
   background: #ecfdf5;
+  text-align: left;
+  padding: 10px 14px;
+  color: #047857;
+  font-weight: 600;
+  border-bottom: 1px solid #d1fae5;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
-.provider-contact-modal__loading,
-.provider-contact-modal__error {
+.tour-contact__table tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+  color: #0f172a;
+}
+
+.tour-contact__row--booker {
+  background: #f8fafc;
+}
+
+.tour-contact__row--traveler td:first-child::before {
+  content: "↳ ";
+  color: #94a3b8;
+}
+
+.tour-contact__stt {
+  width: 50px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.tour-contact__name {
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.tour-contact__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tour-contact__chip {
+  display: inline-block;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tour-contact__chip--booker {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.tour-contact__chip--traveler {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.tour-contact__link {
+  color: #047857;
+  text-decoration: none;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.tour-contact__link:hover {
+  text-decoration: underline;
+}
+
+.tour-contact__muted {
+  color: #94a3b8;
+}
+
+.tour-contact__hint {
+  font-style: italic;
+  font-size: 12.5px;
+}
+
+.tour-contact__empty {
+  padding: 24px 0;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.tour-contact__empty--error {
+  color: #b91c1c;
+}
+
+.tour-contact__loading {
   padding: 28px 0;
   text-align: center;
   color: #64748b;
   font-size: 14px;
 }
 
-.provider-contact-modal__error {
-  color: #b91c1c;
+.btn-contact.is-active {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+  font-weight: 600;
+}
+
+.tour-card--contact-active {
+  border-color: #16a34a;
+  box-shadow:
+    0 0 0 3px rgba(22, 163, 74, 0.15),
+    0 14px 28px rgba(22, 163, 74, 0.1);
 }
 
 .tour-card--progress-active {
@@ -803,6 +814,16 @@ a.provider-contact-modal__row:hover {
 
 .tour-progress[hidden] {
   display: none !important;
+}
+
+.tour-progress__depart-warn {
+  margin: 0;
+  padding: 12px 20px;
+  background: #fff7ed;
+  border-bottom: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .tour-progress__header {

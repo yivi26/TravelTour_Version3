@@ -278,7 +278,7 @@ function bindFilterButtons() {
 // ───── API helpers ─────
 async function changeStatus(bookingId, status) {
   const labels = { confirmed: "xác nhận", cancelled: "hủy" };
-  if (!confirm(`Bạn có chắc muốn ${labels[status] || status} booking này không?`)) return;
+  if (!(await showAppConfirm(`Bạn có chắc muốn ${labels[status] || status} booking này không?`)) return;
 
   try {
     const res = await fetch(`/api/provider/bookings/${bookingId}`, {
@@ -347,7 +347,7 @@ async function approveCancelRequest() {
   }
 
   if (
-    !confirm(
+    !(await showAppConfirm(
       `Chấp nhận yêu cầu hủy booking ${b.booking_code || selectedCancelRequestId}?`,
     )
   ) {

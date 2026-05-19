@@ -27,12 +27,8 @@
     return d.toLocaleDateString("vi-VN");
   }
 
-  function urgencyLabel(level) {
-    if (level === "urgent")
-      return { text: "Khẩn cấp", className: "is-urgent" };
-    if (level === "medium")
-      return { text: "Cần xử lý sớm", className: "is-medium" };
-    return { text: "Sắp tới", className: "is-low" };
+  function urgencyLabel() {
+    return { text: "Báo bận khẩn cấp", className: "is-urgent" };
   }
 
   function statusLabel(status) {
@@ -102,13 +98,16 @@
     return json.data;
   }
 
-  async function cancelTourForRequest(id, note) {
+  async function cancelTourForRequest(id, { note, customerDiscountPercent }) {
     const res = await fetch(
       `/api/provider/absence-requests/${encodeURIComponent(id)}/cancel-tour`,
       {
         method: "POST",
         headers: providerAuthHeaders(),
-        body: JSON.stringify({ note }),
+        body: JSON.stringify({
+          note,
+          customer_discount_percent: Number(customerDiscountPercent) || 0,
+        }),
       },
     );
     const json = await res.json().catch(() => ({}));
@@ -116,6 +115,65 @@
       throw new Error(json?.message || "Huỷ tour thất bại");
     }
     return json.data;
+  }
+
+  function ensureCancelCompensationModal() {
+    let modal = document.getElementById("absenceCancelCompModal");
+    if (modal) return modal;
+
+    modal = document.createElement("div");
+    modal.id = "absenceCancelCompModal";
+    modal.className = "absence-comp-modal";
+    modal.hidden = true;
+    modal.innerHTML = `
+      <div class="absence-comp-modal__backdrop" data-close-comp></div>
+      <div class="absence-comp-modal__dialog" role="dialog" aria-modal="true">
+        <button type="button" class="absence-comp-modal__close" data-close-comp aria-label="Đóng">&times;</button>
+        <h2 class="absence-comp-modal__title">Bồi thường khách hàng</h2>
+        <p class="absence-comp-modal__hint">
+          Vui lòng nhập <strong>phần trăm giảm giá</strong> để bồi thường cho khách của tour này.
+          Mỗi khách sẽ nhận một mã giảm giá <em>vô thời hạn</em> áp dụng cho tour kế tiếp thuộc nhà cung cấp của bạn.
+        </p>
+        <label class="absence-comp-modal__field">
+          <span>Phần trăm giảm giá (0 – 100%)</span>
+          <input type="number" min="0" max="100" step="1" value="10" data-role="comp-percent" />
+        </label>
+        <label class="absence-comp-modal__field">
+          <span>Ghi chú (tùy chọn)</span>
+          <textarea rows="3" data-role="comp-note" placeholder="VD: Không bố trí được HDV thay thế..."></textarea>
+        </label>
+        <p class="absence-comp-modal__error" data-role="comp-error" hidden></p>
+        <div class="absence-comp-modal__actions">
+          <button type="button" class="absence-comp-modal__btn absence-comp-modal__btn--ghost" data-close-comp>Huỷ</button>
+          <button type="button" class="absence-comp-modal__btn absence-comp-modal__btn--primary" data-role="comp-confirm">
+            Xác nhận huỷ tour
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function openCancelCompensationModal() {
+    const modal = ensureCancelCompensationModal();
+    modal.querySelector("[data-role='comp-percent']").value = 10;
+    modal.querySelector("[data-role='comp-note']").value =
+      document.getElementById("absenceProviderNote")?.value || "";
+    const err = modal.querySelector("[data-role='comp-error']");
+    err.hidden = true;
+    err.textContent = "";
+    modal.hidden = false;
+    requestAnimationFrame(() => modal.classList.add("is-visible"));
+  }
+
+  function closeCancelCompensationModal() {
+    const modal = document.getElementById("absenceCancelCompModal");
+    if (!modal) return;
+    modal.classList.remove("is-visible");
+    window.setTimeout(() => {
+      if (!modal.classList.contains("is-visible")) modal.hidden = true;
+    }, 180);
   }
 
   function renderList() {
@@ -130,7 +188,7 @@
 
     host.innerHTML = absenceItems
       .map((item) => {
-        const u = urgencyLabel(item.urgency);
+        const u = urgencyLabel();
         const s = statusLabel(item.status);
         const active = String(item.id) === String(selectedRequestId)
           ? "is-active"
@@ -193,7 +251,7 @@
     const host = document.getElementById("absenceDetailCard");
     if (!host) return;
 
-    const u = urgencyLabel(item.urgency);
+    const u = urgencyLabel();
     const s = statusLabel(item.status);
 
     host.innerHTML = `
@@ -256,17 +314,14 @@
           <p class="absence-detail__error" id="absenceActionError" hidden></p>
           <div class="absence-detail__buttons">
             <button type="button" class="absence-btn absence-btn--danger" data-action="cancel-tour">
-              Huỷ tour
-            </button>
-            <button type="button" class="absence-btn absence-btn--reject" data-action="reject">
-              Từ chối
+              Không có HDV thay — Huỷ tour
             </button>
             <button type="button" class="absence-btn absence-btn--approve" data-action="approve">
               Duyệt & Phân công
             </button>
           </div>
           <p class="absence-detail__hint">
-            Nếu không tìm được HDV thay thế, có thể chọn <strong>Huỷ tour</strong> để tự động huỷ tất cả booking và thông báo cho khách.
+            Nếu không tìm được HDV thay thế, chọn <strong>Không có HDV thay — Huỷ tour</strong>: tour chuyển <em>ngưng hoạt động</em>, HDV báo bận bị phạt <strong>2%</strong> giá trị tour và nhận thông báo.
           </p>
         </section>
       `
@@ -391,45 +446,57 @@
 
       const cancelBtn = event.target.closest('[data-action="cancel-tour"]');
       if (cancelBtn) {
-        const note = document.getElementById("absenceProviderNote")?.value || "";
-        const ok = confirm(
-          "Hành động này sẽ HUỶ TOUR và HUỶ TOÀN BỘ BOOKING của tour. Khách hàng sẽ nhận thông báo huỷ tour. Bạn có chắc chắn không?",
-        );
-        if (!ok) return;
-        cancelBtn.disabled = true;
-        cancelBtn.textContent = "Đang xử lý...";
-        try {
-          await cancelTourForRequest(selectedRequestId, note);
-          await loadAndRender();
-          alert("Đã huỷ tour và gửi thông báo cho khách hàng.");
-        } catch (err) {
-          alert(err.message || "Không huỷ được tour");
-        } finally {
-          cancelBtn.disabled = false;
-          cancelBtn.textContent = "Huỷ tour";
-        }
+        openCancelCompensationModal();
+        return;
+      }
+    });
+
+    document.addEventListener("click", async (event) => {
+      if (event.target.closest("[data-close-comp]")) {
+        closeCancelCompensationModal();
         return;
       }
 
-      const rejectBtn = event.target.closest('[data-action="reject"]');
-      if (rejectBtn) {
-        const note = document.getElementById("absenceProviderNote")?.value || "";
-        if (!note.trim()) {
-          const ok = confirm("Bạn chưa nhập ghi chú lý do từ chối. Tiếp tục?");
-          if (!ok) return;
-        }
-        rejectBtn.disabled = true;
-        rejectBtn.textContent = "Đang xử lý...";
-        try {
-          await rejectRequest(selectedRequestId, note);
-          await loadAndRender();
-          alert("Đã từ chối yêu cầu.");
-        } catch (err) {
-          alert(err.message || "Không từ chối được");
-        } finally {
-          rejectBtn.disabled = false;
-          rejectBtn.textContent = "Từ chối";
-        }
+      const confirmBtn = event.target.closest("[data-role='comp-confirm']");
+      if (!confirmBtn) return;
+      if (!selectedRequestId) return;
+
+      const modal = document.getElementById("absenceCancelCompModal");
+      if (!modal) return;
+      const percentInput = modal.querySelector("[data-role='comp-percent']");
+      const noteInput = modal.querySelector("[data-role='comp-note']");
+      const errBox = modal.querySelector("[data-role='comp-error']");
+      errBox.hidden = true;
+      errBox.textContent = "";
+
+      const percent = Number(percentInput.value);
+      if (Number.isNaN(percent) || percent < 0 || percent > 100) {
+        errBox.textContent = "Phần trăm phải nằm trong khoảng 0 – 100";
+        errBox.hidden = false;
+        return;
+      }
+
+      confirmBtn.disabled = true;
+      const originalText = confirmBtn.textContent;
+      confirmBtn.textContent = "Đang xử lý...";
+      try {
+        await cancelTourForRequest(selectedRequestId, {
+          note: noteInput.value || "",
+          customerDiscountPercent: percent,
+        });
+        closeCancelCompensationModal();
+        await loadAndRender();
+        alert(
+          percent > 0
+            ? `Đã huỷ tour. Mỗi khách của tour này được tặng mã giảm ${percent}% cho lần đặt tour kế tiếp.`
+            : "Đã huỷ tour.",
+        );
+      } catch (err) {
+        errBox.textContent = err.message || "Không huỷ được tour";
+        errBox.hidden = false;
+      } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = originalText;
       }
     });
   }

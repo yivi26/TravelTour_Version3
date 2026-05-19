@@ -334,7 +334,7 @@ async function unlockTourActions(id) {
   const tour = getTourByIdFromCache(id);
   if (!tour || !isTourActionsLockable(tour)) return;
 
-  const ok = confirm(
+  const ok = await showAppConfirm(
     "Mở ràng buộc cho tour này?\n\nSau khi mở, bạn có thể sửa, xóa và đổi trạng thái tour kể cả khi tour đang diễn ra hoặc đã kết thúc.",
   );
   if (!ok) return;
@@ -371,7 +371,7 @@ async function lockTourActions(id) {
   const tour = getTourByIdFromCache(id);
   if (!tour || !isTourActionsRelockable(tour)) return;
 
-  const ok = confirm(
+  const ok = await showAppConfirm(
     "Ràng buộc lại tour này?\n\nSau khi khóa, bạn sẽ không thể sửa, xóa hoặc đổi trạng thái tour khi tour đang diễn ra hoặc đã kết thúc.",
   );
   if (!ok) return;
@@ -399,7 +399,7 @@ async function lockTourActions(id) {
 async function deleteTour(id) {
   if (!guardTourAction(id)) return;
 
-  const confirmDelete = confirm("Bạn có chắc muốn xoá tour?");
+  const confirmDelete = await showAppConfirm("Bạn có chắc muốn xoá tour?");
   if (!confirmDelete) return;
 
   try {

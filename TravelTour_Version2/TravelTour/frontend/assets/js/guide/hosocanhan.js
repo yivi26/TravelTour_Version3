@@ -1,5 +1,6 @@
 let profileData = null;
 let isEditing = false;
+let guideBankData = null;
 
 function formatDateVN(dateString) {
   if (!dateString) return "Chưa cập nhật";
@@ -50,16 +51,6 @@ function parseTextLines(value) {
     .filter(Boolean);
 }
 
-function parseLanguageLines(value) {
-  return parseTextLines(value).map((line) => {
-    const parts = line.split("|").map((item) => item.trim());
-    if (parts.length >= 2) {
-      return { name: parts[0], level: parts[1] };
-    }
-    return { name: line, level: "Chưa cập nhật" };
-  });
-}
-
 function listToTextareaLines(items) {
   if (!Array.isArray(items) || !items.length) return "";
   return items
@@ -68,21 +59,144 @@ function listToTextareaLines(items) {
     .join("\n");
 }
 
-function languagesToTextareaLines(items) {
-  if (!Array.isArray(items) || !items.length) return "";
-  return items
-    .map((item) => {
-      if (typeof item === "string") return item;
-      const name = item?.name || "";
-      const level = item?.level || "Chưa cập nhật";
-      return name ? `${name} | ${level}` : "";
-    })
-    .filter(Boolean)
-    .join("\n");
-}
-
 function getGuideToken() {
   return localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
+}
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function fetchGuideBankInfo() {
+  const response = await fetch("/api/guide/bank-info", {
+    method: "GET",
+    headers: guideAuthHeaders(),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    assertGuideFetchOk(response, result, "Không thể tải thông tin ngân hàng");
+  }
+  return result.data || {};
+}
+
+async function saveGuideBankInfo(payload) {
+  const response = await fetch("/api/guide/bank-info", {
+    method: "PUT",
+    headers: guideAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    assertGuideFetchOk(response, result, "Không thể cập nhật thông tin ngân hàng");
+  }
+  return result.data || {};
+}
+
+function renderGuideBankInfo(bank) {
+  guideBankData = bank || {};
+  const host = document.getElementById("guideBankInfo");
+  const editBtn = document.getElementById("bankEditBtn");
+  if (!host) return;
+
+  const hasBank =
+    guideBankData.bank_account_number && guideBankData.bank_account_name;
+
+  if (editBtn) {
+    editBtn.hidden = false;
+    editBtn.textContent = hasBank ? "Cập nhật" : "Thêm STK";
+  }
+
+  if (!hasBank) {
+    host.innerHTML = `
+      <p class="bank-info-empty">
+        Bạn chưa có tài khoản ngân hàng. Hãy cập nhật để nhà cung cấp có thể chuyển khoản hoa hồng.
+      </p>`;
+    return;
+  }
+
+  host.innerHTML = `
+    <div class="bank-info-fields">
+      <div class="info-item simple-box bank-info-field">
+        <p class="info-label">Ngân hàng</p>
+        <p class="info-value">${escapeHtml(guideBankData.bank_name || "—")}</p>
+      </div>
+      <div class="info-item simple-box bank-info-field">
+        <p class="info-label">Số tài khoản</p>
+        <p class="info-value">${escapeHtml(guideBankData.bank_account_number)}</p>
+      </div>
+      <div class="info-item simple-box bank-info-field">
+        <p class="info-label">Chủ tài khoản</p>
+        <p class="info-value">${escapeHtml(guideBankData.bank_account_name)}</p>
+      </div>
+      <div class="info-item simple-box bank-info-field">
+        <p class="info-label">Chi nhánh</p>
+        <p class="info-value">${escapeHtml(guideBankData.bank_branch || "—")}</p>
+      </div>
+    </div>`;
+}
+
+function openGuideBankModal() {
+  const bank = guideBankData || {};
+  const existing = document.getElementById("bankModal");
+  if (existing) existing.remove();
+
+  const html = `
+    <div class="bank-modal" id="bankModal">
+      <div class="bank-modal__backdrop" data-close-bank></div>
+      <div class="bank-modal__dialog">
+        <header>
+          <h3>Cập nhật tài khoản ngân hàng</h3>
+          <button type="button" data-close-bank aria-label="Đóng">×</button>
+        </header>
+        <form id="bankForm">
+          <label>Ngân hàng
+            <input name="bank_name" value="${escapeHtml(bank.bank_name || "")}" placeholder="Vietcombank" required />
+          </label>
+          <label>Số tài khoản
+            <input name="bank_account_number" value="${escapeHtml(bank.bank_account_number || "")}" placeholder="0123456789" required />
+          </label>
+          <label>Chủ tài khoản (in hoa, không dấu)
+            <input name="bank_account_name" value="${escapeHtml(bank.bank_account_name || "")}" placeholder="NGUYEN VAN A" required />
+          </label>
+          <label>Chi nhánh (tuỳ chọn)
+            <input name="bank_branch" value="${escapeHtml(bank.bank_branch || "")}" placeholder="Chi nhánh Hà Nội" />
+          </label>
+          <div class="bank-modal__actions">
+            <button type="button" class="btn btn--ghost" data-close-bank>Hủy</button>
+            <button type="submit" class="btn btn--primary">Lưu</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+
+  document.body.insertAdjacentHTML("beforeend", html);
+
+  const modal = document.getElementById("bankModal");
+  modal.addEventListener("click", (e) => {
+    if (e.target.closest("[data-close-bank]")) modal.remove();
+  });
+
+  document.getElementById("bankForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    try {
+      const updated = await saveGuideBankInfo({
+        bank_name: fd.get("bank_name"),
+        bank_account_number: fd.get("bank_account_number"),
+        bank_account_name: fd.get("bank_account_name"),
+        bank_branch: fd.get("bank_branch"),
+      });
+      modal.remove();
+      renderGuideBankInfo(updated);
+      alert("Đã cập nhật thông tin ngân hàng");
+    } catch (error) {
+      alert(error.message || "Cập nhật thất bại");
+    }
+  });
 }
 
 function persistGuideUser(profile) {
@@ -232,6 +346,39 @@ function renderHeader(data) {
   }
 }
 
+function fileNameFromUrl(url) {
+  if (!url) return "";
+  const parts = String(url).split("/");
+  return parts[parts.length - 1] || "Tài liệu";
+}
+
+function renderGuideDocuments(data) {
+  const container = document.getElementById("guideDocumentsInfo");
+  if (!container) return;
+
+  const contractUrl = resolveAvatarUrl(data.contractFileUrl);
+  const cvUrl = resolveAvatarUrl(data.cvFileUrl);
+
+  const contractHtml = contractUrl
+    ? `<a class="guide-doc-link" href="${escapeHtml(contractUrl)}" target="_blank" rel="noopener noreferrer">📄 ${escapeHtml(fileNameFromUrl(contractUrl))}</a>`
+    : `<p class="guide-doc-empty">Chưa có hợp đồng</p>`;
+
+  const cvHtml = cvUrl
+    ? `<a class="guide-doc-link" href="${escapeHtml(cvUrl)}" target="_blank" rel="noopener noreferrer">📎 ${escapeHtml(fileNameFromUrl(cvUrl))}</a>`
+    : `<p class="guide-doc-empty">Chưa có CV</p>`;
+
+  container.innerHTML = `
+    <div class="guide-doc-row">
+      <p class="info-label">Hợp đồng</p>
+      ${contractHtml}
+    </div>
+    <div class="guide-doc-row">
+      <p class="info-label">CV</p>
+      ${cvHtml}
+    </div>
+  `;
+}
+
 function renderPersonalInfo(data) {
   const infoFullName = document.getElementById("infoFullName");
   const infoPhone = document.getElementById("infoPhone");
@@ -248,28 +395,10 @@ function renderPersonalInfo(data) {
 
 function renderProfessionalInfo(data) {
   const infoExperience = document.getElementById("infoExperience");
-  const certificateList = document.getElementById("certificateList");
   const specialtyTagList = document.getElementById("specialtyTagList");
-  const languageList = document.getElementById("languageList");
 
   if (infoExperience) {
     infoExperience.textContent = `${data.experienceYears || 0} năm kinh nghiệm hướng dẫn viên du lịch`;
-  }
-
-  if (certificateList) {
-    const certificates = Array.isArray(data.certificates) ? data.certificates : [];
-    certificateList.innerHTML = certificates.length
-      ? certificates
-          .map(
-            (item) => `
-              <div class="certificate-item">
-                <span class="dot green-dot"></span>
-                <span>${typeof item === "string" ? item : item.name || "Chứng chỉ"}</span>
-              </div>
-            `
-          )
-          .join("")
-      : `<div class="certificate-item"><span>Chưa cập nhật chứng chỉ</span></div>`;
   }
 
   if (specialtyTagList) {
@@ -287,30 +416,7 @@ function renderProfessionalInfo(data) {
       : `<span class="tag green-tag">Chưa cập nhật</span>`;
   }
 
-  if (languageList) {
-    const languages = Array.isArray(data.languages) ? data.languages : [];
-    languageList.innerHTML = languages.length
-      ? languages
-          .map((item) => {
-            const name = typeof item === "string" ? item : item.name || "Ngôn ngữ";
-            const level =
-              typeof item === "string" ? "Chưa cập nhật" : item.level || "Chưa cập nhật";
-            const levelClass =
-              level.toLowerCase().includes("bản ngữ") ||
-              level.toLowerCase().includes("thành thạo")
-                ? "green-text"
-                : "yellow-text";
-
-            return `
-              <div class="language-row">
-                <span>${name}</span>
-                <span class="lang-level ${levelClass}">${level}</span>
-              </div>
-            `;
-          })
-          .join("")
-      : `<div class="language-row"><span>Chưa cập nhật</span><span class="lang-level yellow-text">--</span></div>`;
-  }
+  renderGuideDocuments(data);
 }
 
 function renderProfileStats(data) {
@@ -358,18 +464,14 @@ function populateInlineForm(data) {
   const editBirthDate = document.getElementById("editBirthDate");
   const editAddress = document.getElementById("editAddress");
   const editExperienceYears = document.getElementById("editExperienceYears");
-  const editCertificates = document.getElementById("editCertificates");
   const editSpecialties = document.getElementById("editSpecialties");
-  const editLanguages = document.getElementById("editLanguages");
 
   if (editFullName) editFullName.value = data.fullName || "";
   if (editPhone) editPhone.value = data.phone || "";
   if (editBirthDate) editBirthDate.value = toInputDate(data.birthDate);
   if (editAddress) editAddress.value = data.address || "";
   if (editExperienceYears) editExperienceYears.value = data.experienceYears || 0;
-  if (editCertificates) editCertificates.value = listToTextareaLines(data.certificates);
   if (editSpecialties) editSpecialties.value = listToTextareaLines(data.specialties);
-  if (editLanguages) editLanguages.value = languagesToTextareaLines(data.languages);
 }
 
 function collectInlinePayload() {
@@ -382,14 +484,8 @@ function collectInlinePayload() {
     experienceYears: Number(
       document.getElementById("editExperienceYears")?.value || 0
     ),
-    certificates: parseTextLines(
-      document.getElementById("editCertificates")?.value || ""
-    ),
     specialties: parseTextLines(
       document.getElementById("editSpecialties")?.value || ""
-    ),
-    languages: parseLanguageLines(
-      document.getElementById("editLanguages")?.value || ""
     ),
   };
 }
@@ -459,9 +555,11 @@ async function handleSaveProfile() {
       birthDate: payload.birthDate || null,
       bio: payload.bio || null,
       experienceYears: payload.experienceYears,
-      certificates: payload.certificates,
+      certificates: Array.isArray(profileData?.certificates)
+        ? profileData.certificates
+        : [],
       specialties: payload.specialties,
-      languages: payload.languages,
+      languages: Array.isArray(profileData?.languages) ? profileData.languages : [],
     });
 
     if (!updated) throw new Error("Không nhận được dữ liệu sau khi cập nhật");
@@ -526,6 +624,8 @@ function bindEvents() {
   cameraBtn?.addEventListener("click", () => avatarInput?.click());
   avatarInput?.addEventListener("change", handleAvatarSelected);
   logoutBtn?.addEventListener("click", guideLogout);
+
+  document.getElementById("bankEditBtn")?.addEventListener("click", openGuideBankModal);
 }
 
 async function initPage() {
@@ -541,6 +641,18 @@ async function initPage() {
 
     renderProfile(profileData);
     bindEvents();
+
+    try {
+      const bank = await fetchGuideBankInfo();
+      renderGuideBankInfo(bank);
+    } catch (bankErr) {
+      console.warn("bank info:", bankErr);
+      const host = document.getElementById("guideBankInfo");
+      if (host) {
+        host.innerHTML =
+          '<p class="bank-info-empty">Không tải được thông tin ngân hàng.</p>';
+      }
+    }
   } catch (error) {
     console.error("Lỗi tải hồ sơ guide:", error);
 

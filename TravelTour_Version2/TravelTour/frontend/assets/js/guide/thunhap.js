@@ -61,11 +61,6 @@ async function fetchEarnings(status = null) {
   return json.data || [];
 }
 
-async function fetchBankInfo() {
-  const json = await fetchJson("/api/guide/bank-info");
-  return json.data || {};
-}
-
 function renderStats(summary) {
   const container = document.getElementById("incomeStatsGrid");
   if (!container) return;
@@ -218,94 +213,8 @@ function buildCharts(monthly) {
   }
 }
 
-function renderBankInfo(bank) {
-  const host = document.getElementById("guideBankInfo");
-  if (!host) return;
-  const hasBank = bank?.bank_account_number && bank?.bank_account_name;
-  host.innerHTML = `
-    <div class="bank-card">
-      <div class="bank-card__head">
-        <strong>Thông tin tài khoản ngân hàng</strong>
-        <button type="button" class="bank-card__edit" id="bankEditBtn">${hasBank ? "Cập nhật" : "Thêm STK"}</button>
-      </div>
-      ${
-        hasBank
-          ? `<ul class="bank-card__list">
-              <li><span>Ngân hàng</span><strong>${escapeHtml(bank.bank_name || "")}</strong></li>
-              <li><span>Số tài khoản</span><strong>${escapeHtml(bank.bank_account_number)}</strong></li>
-              <li><span>Chủ tài khoản</span><strong>${escapeHtml(bank.bank_account_name)}</strong></li>
-              ${bank.bank_branch ? `<li><span>Chi nhánh</span><strong>${escapeHtml(bank.bank_branch)}</strong></li>` : ""}
-            </ul>`
-          : `<p class="bank-card__warn">Bạn chưa có STK. Hãy cập nhật để NCC có thể chuyển khoản hoa hồng.</p>`
-      }
-    </div>`;
-
-  const editBtn = document.getElementById("bankEditBtn");
-  if (editBtn) editBtn.addEventListener("click", () => openBankModal(bank || {}));
-}
-
-function openBankModal(bank) {
-  const existing = document.getElementById("bankModal");
-  if (existing) existing.remove();
-  const html = `
-    <div class="bank-modal" id="bankModal">
-      <div class="bank-modal__backdrop" data-close-bank></div>
-      <div class="bank-modal__dialog">
-        <header>
-          <h3>Cập nhật tài khoản ngân hàng</h3>
-          <button type="button" data-close-bank>×</button>
-        </header>
-        <form id="bankForm">
-          <label>Ngân hàng
-            <input name="bank_name" value="${escapeHtml(bank.bank_name || "")}" placeholder="Vietcombank" required />
-          </label>
-          <label>Số tài khoản
-            <input name="bank_account_number" value="${escapeHtml(bank.bank_account_number || "")}" placeholder="0123456789" required />
-          </label>
-          <label>Chủ tài khoản (in hoa, không dấu)
-            <input name="bank_account_name" value="${escapeHtml(bank.bank_account_name || "")}" placeholder="NGUYEN VAN A" required />
-          </label>
-          <label>Chi nhánh (tuỳ chọn)
-            <input name="bank_branch" value="${escapeHtml(bank.bank_branch || "")}" placeholder="Chi nhánh Hà Nội" />
-          </label>
-          <div class="bank-modal__actions">
-            <button type="button" class="btn btn--ghost" data-close-bank>Hủy</button>
-            <button type="submit" class="btn btn--primary">Lưu</button>
-          </div>
-        </form>
-      </div>
-    </div>`;
-  document.body.insertAdjacentHTML("beforeend", html);
-
-  const modal = document.getElementById("bankModal");
-  modal.addEventListener("click", (e) => {
-    if (e.target.closest("[data-close-bank]")) modal.remove();
-  });
-  document.getElementById("bankForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    try {
-      const json = await fetchJson("/api/guide/bank-info", {
-        method: "PUT",
-        body: JSON.stringify({
-          bank_name: fd.get("bank_name"),
-          bank_account_number: fd.get("bank_account_number"),
-          bank_account_name: fd.get("bank_account_name"),
-          bank_branch: fd.get("bank_branch"),
-        }),
-        headers: { ...guideAuthHeaders(), "Content-Type": "application/json" },
-      });
-      modal.remove();
-      renderBankInfo(json.data || {});
-      alert("Đã cập nhật thông tin ngân hàng");
-    } catch (err) {
-      alert(err.message || "Cập nhật thất bại");
-    }
-  });
-}
-
 async function handleConfirmEarning(earningId) {
-  if (!window.confirm("Bạn xác nhận đã nhận tiền hoa hồng cho khoản này?")) return;
+  if (!(await showAppConfirm("Bạn xác nhận đã nhận tiền hoa hồng cho khoản này?")) return;
   try {
     const json = await fetchJson(`/api/guide/earnings/${encodeURIComponent(earningId)}/confirm`, {
       method: "POST",
@@ -353,15 +262,13 @@ function bindEvents() {
 
 async function initPage() {
   try {
-    const [summary, earnings, bank] = await Promise.all([
+    const [summary, earnings] = await Promise.all([
       fetchSummary(6),
       fetchEarnings(),
-      fetchBankInfo(),
     ]);
     renderStats(summary);
     renderEarningsList(earnings);
     buildCharts(summary.monthly || []);
-    renderBankInfo(bank);
     bindEvents();
   } catch (err) {
     console.error(err);

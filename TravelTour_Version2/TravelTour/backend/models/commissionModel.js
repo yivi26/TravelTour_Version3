@@ -6,7 +6,7 @@
  * - guides.bank_* : thông tin tài khoản ngân hàng để Provider chuyển khoản
  *
  * Công thức (D = tours.duration_days):
- *   provider_platform_fee_rate(D) = min(20, 10 + max(0, D - 3))
+ *   provider_platform_fee_rate    = 10 (cố định, không phụ thuộc số ngày tour)
  *   guide_commission_rate(D)      = min(17, 10 + max(0, D - 1))
  *   guide_partner_fee_rate        = 6 (cố định)
  */
@@ -14,9 +14,7 @@
 import db from "../config/db.js";
 
 const DEFAULT_PARTNER_FEE_RATE = 6;
-const PROVIDER_BASE = 10;
-const PROVIDER_BUMP_FROM = 3; // +1% từ D = 4
-const PROVIDER_CAP = 20;
+const PROVIDER_PLATFORM_FEE_RATE = 10;
 const GUIDE_BASE = 10;
 const GUIDE_BUMP_FROM = 1; // +1% từ D = 2
 const GUIDE_CAP = 17;
@@ -96,9 +94,8 @@ async function ensureSchema() {
 }
 
 // ===== Công thức =====
-export function computeProviderPlatformFeeRate(durationDays) {
-  const d = Math.max(1, Number(durationDays) || 1);
-  return Math.min(PROVIDER_CAP, PROVIDER_BASE + Math.max(0, d - PROVIDER_BUMP_FROM));
+export function computeProviderPlatformFeeRate(_durationDays) {
+  return PROVIDER_PLATFORM_FEE_RATE;
 }
 
 export function computeGuideCommissionRate(durationDays) {

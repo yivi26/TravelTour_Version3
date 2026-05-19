@@ -21,6 +21,10 @@
     />
     <link rel="stylesheet" href="../../assets/css/provider/provider-logout.css" />
     <link rel="stylesheet" href="../../assets/css/provider/provider-absence-badge.css" />
+  
+    <link rel="stylesheet" href="/assets/css/common/app-toast.css" />
+    <script src="/assets/js/common/app-toast.js"></script>
+
   </head>
   <body>
     <aside class="sidebar">
@@ -129,7 +133,7 @@
           </div>
 
           <p class="guide-list-hint guide-list-hint--compact">
-            Toàn bộ HDV thuộc nhà cung cấp của bạn.
+            Toàn bộ HDV đang hoạt động trong hệ thống.
           </p>
 
           <div id="guideListAll" class="guide-list guide-list--scroll"></div>
@@ -138,7 +142,7 @@
         <section class="col-card col-card--suggest">
           <div class="col-title col-title--compact">
             <i class="fa-solid fa-sparkles"></i>
-            <span>HDV gợi ý</span>
+            <span>Hướng dẫn viên gợi ý</span>
           </div>
 
           <p id="guideListHint" class="guide-list-hint guide-list-hint--compact">
@@ -158,6 +162,31 @@
         </section>
       </div>
     </main>
+
+    <div
+      id="guideDetailModal"
+      class="guide-detail-modal"
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="guideDetailModalTitle"
+    >
+      <div class="guide-detail-modal__backdrop" data-guide-detail-dismiss tabindex="-1"></div>
+      <div class="guide-detail-modal__panel" role="document">
+        <header class="guide-detail-modal__header">
+          <h3 id="guideDetailModalTitle">CV hướng dẫn viên</h3>
+          <button
+            type="button"
+            class="guide-detail-modal__close"
+            data-guide-detail-dismiss
+            aria-label="Đóng"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </header>
+        <div id="guideDetailModalBody" class="guide-detail-modal__body"></div>
+      </div>
+    </div>
 
         <script src="../../assets/js/auth/account-lock-fetch.js"></script>
     <script src="../../assets/js/provider/providerFetch.js"></script>

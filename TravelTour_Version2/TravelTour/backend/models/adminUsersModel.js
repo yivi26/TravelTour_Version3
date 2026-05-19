@@ -269,6 +269,8 @@ export async function createPartnerUser({ full_name, email, password, role, prov
 
   const password_hash = await bcrypt.hash(pass, 10);
   const conn = await db.getConnection();
+  let guideId = null;
+  let providerId = null;
 
   try {
     await conn.beginTransaction();
@@ -284,31 +286,34 @@ export async function createPartnerUser({ full_name, email, password, role, prov
 
     if (r === "provider") {
       try {
-        await conn.query(
+        const [provInsert] = await conn.query(
           `
           INSERT INTO providers (user_id, company_name, email, status)
           VALUES (?, ?, ?, 'approved')
           `,
           [userId, name, mail]
         );
+        providerId = provInsert.insertId;
       } catch (e) {
         if (String(e?.sqlMessage || e?.message || "").includes("Unknown column 'email'")) {
-          await conn.query(
+          const [provInsert] = await conn.query(
             `
             INSERT INTO providers (user_id, company_name, status)
             VALUES (?, ?, 'approved')
             `,
             [userId, name]
           );
+          providerId = provInsert.insertId;
         } else {
           throw e;
         }
       }
     } else if (r === "guide") {
-      await conn.query(
+      const [guideInsert] = await conn.query(
         `INSERT INTO guides (user_id, provider_id, status) VALUES (?, ?, 'active')`,
         [userId, guideProviderId]
       );
+      guideId = guideInsert.insertId;
     }
 
     await conn.commit();
@@ -331,6 +336,8 @@ export async function createPartnerUser({ full_name, email, password, role, prov
 
   return {
     id: toNumber(row?.id),
+    guideId: guideId ? toNumber(guideId) : null,
+    providerId: providerId ? toNumber(providerId) : null,
     name: row?.full_name || name,
     email: row?.email || mail,
     role: row?.role || r,

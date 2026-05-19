@@ -1,3 +1,5 @@
+@import url("./customer-navbar-notifications.css");
+
 /* Layout customer: chỉ dùng navbar site, không còn topbar */
 :root {
   --customer-nav-height: 72px;

@@ -9,6 +9,10 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../assets/css/admin/qlidanhgia.css" />
+  
+    <link rel="stylesheet" href="/assets/css/common/app-toast.css" />
+    <script src="/assets/js/common/app-toast.js"></script>
+
   </head>
   <body>
     <div class="app">
@@ -576,7 +580,7 @@
                 await apiPatchStatus(id, "approved");
                 await load();
               } else if (action === "delete") {
-                const ok = confirm("Bạn chắc chắn muốn xoá đánh giá này?");
+                const ok = await showAppConfirm("Bạn chắc chắn muốn xoá đánh giá này?");
                 if (!ok) return;
                 await apiDelete(id);
                 await load();

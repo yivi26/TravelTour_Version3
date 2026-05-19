@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="../../assets/css/customer/customer.css" />
     <link rel="stylesheet" href="../../assets/css/customer/customer-site-nav.css" />
     <link rel="stylesheet" href="../../assets/css/customer/history.css" />
+  
+    <link rel="stylesheet" href="/assets/css/common/app-toast.css" />
+    <script src="/assets/js/common/app-toast.js"></script>
+
   </head>
   <body>
     <script src="../../assets/js/customer/mount-customer-navbar.js"></script>
@@ -31,7 +35,13 @@
               <span>Booking của tôi</span>
             </a>
 
-            <a href="changepass.html" class="menu-item">
+            
+            <a href="coupons.html" class="menu-item">
+              <span class="menu-icon">🎁</span>
+              <span>Mã giảm giá</span>
+            </a>
+
+<a href="changepass.html" class="menu-item">
               <span class="menu-icon">🔒</span>
               <span>Đổi mật khẩu</span>
             </a>
@@ -160,19 +170,18 @@
     </div>
     <div id="confirmCancelModal" class="confirm-cancel-modal">
       <div class="modal-content cancel-policy-modal">
-        <h3>Quy định hủy tour</h3>
+        <h3>Quy định hủy tour:</h3>
         <ul class="cancel-policy-rules">
           <li>
-            Hủy trong vòng <strong>60 phút</strong> kể từ lúc đặt tour:
+            Hủy trong vòng <strong>60 phút</strong> kể từ lúc đặt tour thì
             <strong>không mất phí</strong>.
           </li>
           <li>
-            Hủy từ sau 60 phút đến <strong>24 giờ</strong> kể từ lúc đặt: mất
-            <strong>15%</strong> trên tổng giá trị tour.
+            Hủy từ sau <strong>60 phút</strong> đến <strong>24 giờ</strong> kể từ lúc đặt thì mất
+            <strong>15%</strong> trên tổng giá trị của tour.
           </li>
           <li>
-            Sau <strong>24 giờ</strong> kể từ lúc đặt tour:
-            <strong>không được hủy</strong>.
+            Từ sau <strong>24 giờ</strong> kể từ lúc đặt tour thì <strong>không hủy được</strong>.
           </li>
         </ul>
         <p id="cancelPolicyApply" class="cancel-policy-apply"></p>
@@ -226,6 +235,7 @@
     </div>
     <script src="../../assets/js/auth/account-lock-fetch.js"></script>
     <script src="../../assets/js/auth/navbar-avatar.js"></script>
+    <script src="../../assets/js/customer/customer-notifications.js"></script>
     <script src="../../assets/js/auth/public-navbar-auth.js"></script>
     <script src="../../assets/js/customer/customerTopbarSync.js"></script>
     <script src="../../assets/js/customer/history.js"></script>

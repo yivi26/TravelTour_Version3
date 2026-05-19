@@ -1,7 +1,10 @@
 import express from "express";
 import optionalAuthMiddleware from "../middleware/optionalAuthMiddleware.js";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { getPublicTourReviewsController } from "../controllers/tourReviewsController.js";
+import {
+  getPublicTourReviewsController,
+  getPublicTourReviewsPageController,
+} from "../controllers/tourReviewsController.js";
 import { resolveProviderScopeId } from "../models/providerModel.js";
 import {
   getDashboardData,
@@ -18,6 +21,7 @@ import {
   updateBooking,
   approveBookingCancelController,
   getAllGuides,
+  getProviderGuideDocumentsController,
   assignGuideToTourController,
   unassignGuideFromTourController,
   getPublicFeaturedToursController,
@@ -55,6 +59,11 @@ router.get(
   "/public/tours/:tourId/reviews",
   optionalAuthMiddleware,
   getPublicTourReviewsController
+);
+router.get(
+  "/public/tours/:tourId/reviews/pages",
+  optionalAuthMiddleware,
+  getPublicTourReviewsPageController
 );
 router.get("/public/tours/:id", getPublicTourDetailController);
 
@@ -106,6 +115,7 @@ protectedRouter.get("/bookings", getBookings);
 protectedRouter.put("/bookings/:id", updateBooking);
 protectedRouter.post("/bookings/:id/approve-cancel", approveBookingCancelController);
 protectedRouter.get("/guides", getAllGuides);
+protectedRouter.get("/guides/:guideId/documents", getProviderGuideDocumentsController);
 protectedRouter.post("/assign-guide-to-tour", assignGuideToTourController);
 protectedRouter.post("/unassign-guide-from-tour", unassignGuideFromTourController);
 protectedRouter.get(

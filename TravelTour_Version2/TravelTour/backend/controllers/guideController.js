@@ -16,8 +16,9 @@ import {
   getGuideAssignedToursForCalendar,
   upsertGuideAvailability,
   deleteGuideAvailability,
-  getTourProviderInfoForGuide,
+  getTourCustomersForGuide,
 } from "../models/guideModel.js";
+import { buildTourDeparturePayload } from "../utils/tourDepartureRules.js";
 
 function unlinkLocalAvatarIfExists(storedPath) {
   if (!storedPath || typeof storedPath !== "string") return;
@@ -99,18 +100,21 @@ function mapScheduleType(tour) {
   const now = new Date();
   const start = tour.start_date ? new Date(tour.start_date) : null;
   const end = tour.end_date ? new Date(tour.end_date) : null;
+  const departure = buildTourDeparturePayload(tour);
 
   if (tour.guide_completed_at) {
     return {
       type: "done",
       statusText: "Đã hoàn thành",
+      departureEligibility: departure,
     };
   }
 
   if (tour.status === "archived") {
     return {
       type: "done",
-      statusText: "Đã xong"
+      statusText: "Đã xong",
+      departureEligibility: departure,
     };
   }
 
@@ -122,22 +126,32 @@ function mapScheduleType(tour) {
     now >= start &&
     now <= end
   ) {
+    if (departure.can_depart) {
+      return {
+        type: "running",
+        statusText: "Đang diễn ra",
+        departureEligibility: departure,
+      };
+    }
     return {
-      type: "running",
-      statusText: "Đang diễn ra"
+      type: "awaiting_departure",
+      statusText: "Chưa đủ điều kiện khởi hành",
+      departureEligibility: departure,
     };
   }
 
   if (end && !Number.isNaN(end.getTime()) && now > end) {
     return {
       type: "done",
-      statusText: "Đã xong"
+      statusText: "Đã xong",
+      departureEligibility: departure,
     };
   }
 
   return {
     type: "upcoming",
-    statusText: "Sắp diễn ra"
+    statusText: "Sắp diễn ra",
+    departureEligibility: departure,
   };
 }
 
@@ -193,63 +207,27 @@ export async function getGuideDashboardController(req, res) {
   }
 }
 
-export async function getTourProviderInfoController(req, res) {
+export async function getTourCustomersForGuideController(req, res) {
   try {
     const tourId = Number(req.params.tourId);
     if (!tourId) {
-      return res.status(400).json({
-        success: false,
-        message: "Tour ID không hợp lệ",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Tour ID không hợp lệ" });
     }
-
-    const info = await getTourProviderInfoForGuide(req.guideId, tourId);
-    if (!info) {
+    const data = await getTourCustomersForGuide(req.guideId, tourId);
+    if (!data) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy thông tin nhà cung cấp cho tour này.",
+        message: "Không tìm thấy tour hoặc bạn không phụ trách tour này.",
       });
     }
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        tour: {
-          id: info.tour_id,
-          title: info.tour_title,
-          location: info.tour_location,
-        },
-        provider: {
-          id: info.provider_id,
-          companyName: info.company_name || "",
-          phone: info.provider_phone || "",
-          hotline: info.provider_hotline || "",
-          email: info.provider_email || "",
-          website: info.provider_website || "",
-          address: info.provider_address || "",
-          description: info.provider_description || "",
-          logoUrl: info.provider_logo || "",
-          taxCode: info.provider_tax_code || "",
-          bank: {
-            name: info.provider_bank_name || "",
-            branch: info.provider_bank_branch || "",
-            accountNumber: info.provider_bank_account_number || "",
-            accountName: info.provider_bank_account_name || "",
-          },
-          contact: {
-            fullName: info.contact_full_name || "",
-            email: info.contact_email || "",
-            phone: info.contact_phone || "",
-            avatar: info.contact_avatar || "",
-          },
-        },
-      },
-    });
+    return res.status(200).json({ success: true, data });
   } catch (err) {
-    console.error("❌ GUIDE TOUR PROVIDER INFO ERROR:", err);
+    console.error("GUIDE TOUR CUSTOMERS:", err);
     return res.status(500).json({
       success: false,
-      message: "Lỗi lấy thông tin nhà cung cấp",
+      message: err.message || "Lỗi tải danh sách khách hàng",
     });
   }
 }
@@ -374,9 +352,11 @@ export async function getGuideSchedulesController(req, res) {
         endDate: toLocalYmd(tour.end_date),
         location: tour.location || "Chưa cập nhật",
         customers: Number(tour.max_capacity || 0),
+        bookedParticipants: Number(tour.booked_participants || 0),
         guideCompletedAt: tour.guide_completed_at || null,
         type: mapped.type,
-        status: mapped.statusText
+        status: mapped.statusText,
+        departureEligibility: mapped.departureEligibility || buildTourDeparturePayload(tour),
       };
     });
 
@@ -399,17 +379,23 @@ export async function getCurrentToursController(req, res) {
 
     const tours = await getCurrentToursByGuide(req.guideId, keyword);
 
-    const data = tours.map((tour) => ({
-      id: Number(tour.id),
-      name: tour.title || "Chưa có tên tour",
-      customers: Number(tour.max_capacity || 0),
-      startDate: tour.start_date || null,
-      endDate: tour.end_date || null,
-      duration: tour.duration_text || "Chưa cập nhật",
-      location: tour.location || "Chưa cập nhật",
-      status: tour.status || "active",
-      statusText: mapTourStatusText(tour.status)
-    }));
+    const data = tours.map((tour) => {
+      const departureEligibility = buildTourDeparturePayload(tour);
+      return {
+        id: Number(tour.id),
+        name: tour.title || "Chưa có tên tour",
+        customers: Number(tour.max_capacity || 0),
+        bookedParticipants: Number(tour.booked_participants || 0),
+        startDate: tour.start_date || null,
+        endDate: tour.end_date || null,
+        duration: tour.duration_text || "Chưa cập nhật",
+        location: tour.location || "Chưa cập nhật",
+        status: tour.status || "active",
+        statusText: mapTourStatusText(tour.status),
+        departureEligibility,
+        canOperate: departureEligibility.can_depart,
+      };
+    });
 
     return res.status(200).json({
       message: "Lấy danh sách tour đang dẫn thành công",

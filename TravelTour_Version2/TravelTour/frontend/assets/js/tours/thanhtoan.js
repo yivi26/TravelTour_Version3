@@ -120,30 +120,40 @@
     return document.querySelector('input[name="payment-method"]:checked');
   }
 
+  var autoCoupon = null;
+
+  function getCouponDiscountedPrice(price) {
+    if (!autoCoupon || !autoCoupon.discountPercent) return price;
+    var pct = Math.max(0, Math.min(100, Number(autoCoupon.discountPercent) || 0));
+    return Math.round(Number(price) * (1 - pct / 100));
+  }
+
   function buildRequestData() {
     var data = getStoredData();
     var meta = data.bookingMeta || {};
     var options = data.options || {};
     var selected = getSelectedMethod();
-  
-    var finalPrice =
+
+    var subtotal =
       Number(meta.grandTotal || 0) + Number(options.extraPrice || 0);
-  
+    var finalPrice = getCouponDiscountedPrice(subtotal);
+
     return {
       tour_id: meta.tourId || meta.tour_id || 0,
       schedule_id: meta.scheduleId || meta.schedule_id || null,
       departure_date: meta.departureDate || meta.departure_date || null,
-  
+
       contact_name: data.customer?.name || "",
       contact_phone: data.customer?.phone || "",
       contact_email: data.customer?.email || "",
       special_requests: data.customer?.note || "",
-  
+
       payment_method:
         selected && selected.value === "wallet" ? "momo" : "office",
-  
+
       final_price: finalPrice,
-  
+      coupon_id: autoCoupon ? autoCoupon.id : null,
+
       travelers: (data.guests || []).map(function (g) {
         var normalizedBirthDate = normalizeDate(g.birthday);
   
@@ -152,6 +162,7 @@
           birth_date: normalizedBirthDate,
           gender: normalizeGender(g.gender),
           id_number: g.documentId || null,
+          phone: g.phone || "",
           traveler_type: getTravelerTypeFromBirthDate(normalizedBirthDate),
         };
       }),
@@ -354,6 +365,33 @@
     }
   }
 
+  function renderCouponInfo(subtotal, discounted) {
+    var host = document.getElementById("auto-coupon-info");
+    if (!host) return;
+
+    if (!autoCoupon) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+
+    var pct = Number(autoCoupon.discountPercent || 0);
+    var discountAmount = Math.max(0, subtotal - discounted);
+    host.hidden = false;
+    host.innerHTML =
+      '<div class="auto-coupon-info__badge">🎁 Mã ' +
+      String(autoCoupon.code || "") +
+      " — Giảm " +
+      pct +
+      "%</div>" +
+      '<p class="auto-coupon-info__detail">Tự động áp dụng cho tour này</p>' +
+      '<div class="summary-card__row auto-coupon-info__row">' +
+      "<span>Giảm giá</span>" +
+      '<strong class="auto-coupon-info__amount">-' +
+      formatCurrency(discountAmount) +
+      "</strong></div>";
+  }
+
   function updateTotal() {
     var storedData = getStoredData();
     var meta = storedData.bookingMeta || {};
@@ -365,10 +403,42 @@
     }
 
     var optionExtra = Number(options.extraPrice || 0);
-    var finalTotal = basePrice + optionExtra;
+    var subtotal = basePrice + optionExtra;
+    var finalTotal = getCouponDiscountedPrice(subtotal);
 
     if (payTotal) {
       payTotal.innerHTML = formatCurrencyMultiline(finalTotal);
+    }
+
+    var grandTotalEl = document.getElementById("summary-grand-total");
+    if (grandTotalEl) {
+      grandTotalEl.textContent = formatCurrency(finalTotal);
+    }
+
+    renderCouponInfo(subtotal, finalTotal);
+  }
+
+  async function loadAutoCouponForTour() {
+    try {
+      var data = getStoredData();
+      var meta = data.bookingMeta || {};
+      var tourId = meta.tourId || meta.tour_id;
+      if (!tourId) return;
+      var token = localStorage.getItem("accessToken");
+      if (!token) return;
+      var res = await fetch(
+        "/api/customer/coupons/best/tour/" + encodeURIComponent(tourId),
+        { headers: { Authorization: "Bearer " + token } },
+      );
+      var json = await res.json().catch(function () {
+        return {};
+      });
+      if (res.ok && json && json.success && json.data) {
+        autoCoupon = json.data;
+        updateTotal();
+      }
+    } catch (err) {
+      console.warn("loadAutoCouponForTour:", err);
     }
   }
 
@@ -557,4 +627,5 @@
   updateConfirmState();
   renderSummary();
   renderTourCardFromMetaStep3();
+  void loadAutoCouponForTour();
 })();

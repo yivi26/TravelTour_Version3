@@ -1,5 +1,7 @@
 import db from "../config/db.js";
 
+import { getGuideDocuments } from "../models/guideDocumentsModel.js";
+import { refreshPendingAbsenceUrgencyForTour } from "../models/guideAbsenceModel.js";
 import {
   getToursByProvider,
   getTourById,
@@ -477,6 +479,14 @@ export async function updateTourController(req, res) {
 
     await updateTour(req.providerId, id, payload);
 
+    if (payload.start_date != null) {
+      try {
+        await refreshPendingAbsenceUrgencyForTour(id);
+      } catch (urgencyErr) {
+        console.warn("refreshPendingAbsenceUrgencyForTour:", urgencyErr.message);
+      }
+    }
+
     return res.status(200).json({
       message: "Cập nhật tour thành công",
     });
@@ -755,6 +765,51 @@ export async function getAllGuides(req, res) {
     return res.status(500).json({
       message: "Lỗi guide",
       error: err.sqlMessage || err.message,
+    });
+  }
+}
+
+/** CV / hợp đồng từ mục Hồ sơ tài liệu (guides.cv_file_url) — cùng nguồn hồ sơ cá nhân HDV. */
+export async function getProviderGuideDocumentsController(req, res) {
+  try {
+    const guideId = Number(req.params.guideId);
+    if (!guideId) {
+      return res.status(400).json({ message: "ID hướng dẫn viên không hợp lệ" });
+    }
+
+    const [[guideRow]] = await db.query(
+      `
+      SELECT g.id, u.full_name
+      FROM guides g
+      JOIN users u ON u.id = g.user_id
+      WHERE g.id = ?
+      LIMIT 1
+      `,
+      [guideId],
+    );
+
+    if (!guideRow) {
+      return res.status(404).json({ message: "Không tìm thấy hướng dẫn viên" });
+    }
+
+    const documents = await getGuideDocuments(guideId);
+    if (!documents) {
+      return res.status(404).json({ message: "Không tìm thấy hướng dẫn viên" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        guideId,
+        fullName: guideRow.full_name || "",
+        cvFileUrl: documents.cvFileUrl || "",
+        contractFileUrl: documents.contractFileUrl || "",
+      },
+    });
+  } catch (err) {
+    console.error("getProviderGuideDocuments:", err);
+    return res.status(500).json({
+      message: err.message || "Không tải được hồ sơ tài liệu HDV",
     });
   }
 }

@@ -2,8 +2,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const logoutBtn = document.getElementById("logoutBtn");
   if (!logoutBtn) return;
 
-  logoutBtn.addEventListener("click", function () {
-    const ok = confirm("Bạn có chắc muốn đăng xuất không?");
+  logoutBtn.addEventListener("click", async function () {
+    const ok = await showAppConfirm("Bạn có chắc muốn đăng xuất không?");
     if (!ok) return;
 
     try {

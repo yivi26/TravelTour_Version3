@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mã giảm giá của tôi - TravelTour</title>
+    <link rel="stylesheet" href="../../assets/css/style.css" />
+    <link rel="stylesheet" href="../../assets/css/customer/customer.css" />
+    <link rel="stylesheet" href="../../assets/css/customer/customer-site-nav.css" />
+    <link rel="stylesheet" href="../../assets/css/customer/coupons.css" />
+  
+    <link rel="stylesheet" href="/assets/css/common/app-toast.css" />
+    <script src="/assets/js/common/app-toast.js"></script>
+
+  </head>
+  <body>
+    <script src="../../assets/js/customer/mount-customer-navbar.js"></script>
+    <div class="dashboard">
+      <div class="dashboard-body">
+        <aside class="sidebar" id="sidebar">
+          <nav class="sidebar-menu">
+            <a href="customer.html" class="menu-item"><span class="menu-icon">👤</span><span>Thông tin cá nhân</span></a>
+            <a href="history.html" class="menu-item"><span class="menu-icon">🕘</span><span>Lịch sử đặt tour</span></a>
+            <a href="booking.html" class="menu-item"><span class="menu-icon">📅</span><span>Booking của tôi</span></a>
+            <a href="coupons.html" class="menu-item active"><span class="menu-icon">🎁</span><span>Mã giảm giá</span></a>
+            <a href="changepass.html" class="menu-item"><span class="menu-icon">🔒</span><span>Đổi mật khẩu</span></a>
+            <button class="menu-item logout-btn" type="button"><span class="menu-icon">🚪</span><span>Đăng xuất</span></button>
+          </nav>
+        </aside>
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        <main class="main-content">
+          <div class="page-container coupons-page">
+            <section class="page-header">
+              <h1>Mã giảm giá của tôi</h1>
+              <p>Mã tặng khi tour bị hủy sẽ tự áp dụng khi bạn đặt tour cùng nhà cung cấp.</p>
+            </section>
+            <div id="couponsList" class="coupons-list"><p class="coupons-empty">Đang tải...</p></div>
+          </div>
+        </main>
+      </div>
+    </div>
+    <div class="modal hidden" id="logoutModal">
+      <div class="modal-content">
+        <h3>Bạn có muốn đăng xuất không?</h3>
+        <div class="modal-actions">
+          <button class="btn-cancel" id="cancelLogout">Hủy</button>
+          <button class="btn-confirm" id="confirmLogout">Đăng xuất</button>
+        </div>
+      </div>
+    </div>
+    <script src="../../assets/js/auth/account-lock-fetch.js"></script>
+    <script src="../../assets/js/auth/navbar-avatar.js"></script>
+    <script src="../../assets/js/customer/customer-notifications.js"></script>
+    <script src="../../assets/js/auth/public-navbar-auth.js"></script>
+    <script src="../../assets/js/customer/customerTopbarSync.js"></script>
+    <script src="../../assets/js/customer/customer-coupons.js"></script>
+  </body>
+</html>

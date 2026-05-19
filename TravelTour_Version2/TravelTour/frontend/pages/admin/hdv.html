@@ -8,6 +8,10 @@
     </title>
     <link rel="stylesheet" href="../../assets/css/admin/admin-base.css" />
     <link rel="stylesheet" href="../../assets/css/admin/hdv.css" />
+  
+    <link rel="stylesheet" href="/assets/css/common/app-toast.css" />
+    <script src="/assets/js/common/app-toast.js"></script>
+
   </head>
   <body>
     <div class="dashboard">
@@ -175,6 +179,40 @@
       </main>
     </div>
 
+    <div id="guideDocsModal" class="hdv-modal" hidden>
+      <div class="hdv-modal-card" role="dialog" aria-modal="true" aria-labelledby="guideDocsModalTitle">
+        <div class="hdv-modal-head">
+          <h2 id="guideDocsModalTitle">Cập nhật hồ sơ tài liệu</h2>
+          <button type="button" class="hdv-modal-close" id="guideDocsModalClose" aria-label="Đóng">×</button>
+        </div>
+        <p class="hdv-modal-hint" id="guideDocsModalGuideName"></p>
+        <div class="hdv-doc-current" id="guideDocsCurrent"></div>
+        <form id="guideDocsForm">
+          <input type="hidden" id="guideDocsGuideId" name="guideId" />
+          <div class="hdv-field">
+            <label for="guideDocsContract">Hợp đồng (Word)</label>
+            <input
+              id="guideDocsContract"
+              name="contract"
+              type="file"
+              accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            />
+            <p class="hdv-field-hint">Để trống nếu không thay đổi. Chấp nhận .doc / .docx</p>
+          </div>
+          <div class="hdv-field">
+            <label for="guideDocsCv">CV (PDF)</label>
+            <input id="guideDocsCv" name="cv" type="file" accept=".pdf,application/pdf" />
+            <p class="hdv-field-hint">Để trống nếu không thay đổi. Chấp nhận .pdf</p>
+          </div>
+          <p class="hdv-field-error" id="guideDocsError" hidden></p>
+          <div class="hdv-modal-actions">
+            <button type="button" class="btn" id="guideDocsCancel">Hủy</button>
+            <button type="submit" class="btn primary">Lưu tài liệu</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="../../assets/js/admin/hdv.js"></script>
     <script src="../../assets/js/admin/thongbao.js"></script>
@@ -325,6 +363,21 @@
             </td>
             <td>
               <div class="actions-table">
+                <button
+                  class="icon-btn docs"
+                  type="button"
+                  aria-label="Cập nhật hồ sơ tài liệu"
+                  data-action="edit-docs"
+                  data-guide-id="${guide.id}"
+                  data-guide-name="${(guide.name || "").replace(/"/g, "&quot;")}"
+                  data-contract-url="${guide.contractFileUrl || ""}"
+                  data-cv-url="${guide.cvFileUrl || ""}"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M3 2.667h6.667L13 5.333v8a1.333 1.333 0 0 1-1.333 1.333H3A1.333 1.333 0 0 1 1.667 13.333V4A1.333 1.333 0 0 1 3 2.667Z" stroke="currentColor" stroke-width="1.2"/>
+                    <path d="M9.333 2.667V5.333H12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                  </svg>
+                </button>
                 <button class="icon-btn view" type="button" aria-label="Xem chi ti&#7871;t">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M1.375 8.232c-.056-.15-.056-.315 0-.464C1.916 6.456 2.834 5.334 4.014 4.545 5.193 3.755 6.581 3.334 8 3.334c1.42 0 2.807.421 3.986 1.211 1.18.79 2.099 1.912 2.64 3.224.056.15.056.315 0 .465-.541 1.312-1.46 2.434-2.64 3.223C10.807 12.245 9.419 12.667 8 12.667c-1.42 0-2.807-.422-3.986-1.212-1.18-.789-2.098-1.91-2.64-3.223Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -536,6 +589,135 @@
           });
         }
 
+        function fileLabelFromUrl(url, fallback) {
+          if (!url) return fallback;
+          const parts = String(url).split("/");
+          return parts[parts.length - 1] || fallback;
+        }
+
+        function renderGuideDocsCurrent(contractUrl, cvUrl) {
+          const el = document.getElementById("guideDocsCurrent");
+          if (!el) return;
+          const contractLink = contractUrl
+            ? `<a href="${contractUrl}" target="_blank" rel="noopener noreferrer">${fileLabelFromUrl(contractUrl, "Hợp đồng")}</a>`
+            : "<span class='hdv-doc-missing'>Chưa có</span>";
+          const cvLink = cvUrl
+            ? `<a href="${cvUrl}" target="_blank" rel="noopener noreferrer">${fileLabelFromUrl(cvUrl, "CV")}</a>`
+            : "<span class='hdv-doc-missing'>Chưa có</span>";
+          el.innerHTML = `
+            <p><strong>Hợp đồng hiện tại:</strong> ${contractLink}</p>
+            <p><strong>CV hiện tại:</strong> ${cvLink}</p>
+          `;
+        }
+
+        function openGuideDocsModal(guide) {
+          const modal = document.getElementById("guideDocsModal");
+          const form = document.getElementById("guideDocsForm");
+          const nameEl = document.getElementById("guideDocsModalGuideName");
+          const idInput = document.getElementById("guideDocsGuideId");
+          const errEl = document.getElementById("guideDocsError");
+          if (!modal || !form || !idInput) return;
+          form.reset();
+          idInput.value = String(guide.id || "");
+          if (nameEl) nameEl.textContent = guide.name ? `HDV: ${guide.name}` : "";
+          renderGuideDocsCurrent(guide.contractFileUrl || "", guide.cvFileUrl || "");
+          if (errEl) {
+            errEl.hidden = true;
+            errEl.textContent = "";
+          }
+          modal.removeAttribute("hidden");
+        }
+
+        function closeGuideDocsModal() {
+          const modal = document.getElementById("guideDocsModal");
+          if (modal) modal.setAttribute("hidden", "");
+        }
+
+        async function apiPatchGuideDocuments(guideId, files) {
+          const fd = new FormData();
+          if (files.contract) fd.append("contract", files.contract);
+          if (files.cv) fd.append("cv", files.cv);
+          const res = await fetch(`/api/admin/guides/${encodeURIComponent(String(guideId))}/documents`, {
+            method: "PATCH",
+            body: fd,
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(json?.message || "Không cập nhật được tài liệu");
+          return json?.data;
+        }
+
+        function bindGuideDocsModal() {
+          const modal = document.getElementById("guideDocsModal");
+          const form = document.getElementById("guideDocsForm");
+          const cancelBtn = document.getElementById("guideDocsCancel");
+          const closeBtn = document.getElementById("guideDocsModalClose");
+          const tbody = document.querySelector("#guideTable tbody");
+          const errEl = document.getElementById("guideDocsError");
+
+          tbody?.addEventListener("click", (e) => {
+            const btn = e.target.closest("button[data-action='edit-docs']");
+            if (!btn) return;
+            openGuideDocsModal({
+              id: btn.getAttribute("data-guide-id"),
+              name: btn.getAttribute("data-guide-name") || "",
+              contractFileUrl: btn.getAttribute("data-contract-url") || "",
+              cvFileUrl: btn.getAttribute("data-cv-url") || "",
+            });
+          });
+
+          cancelBtn?.addEventListener("click", closeGuideDocsModal);
+          closeBtn?.addEventListener("click", closeGuideDocsModal);
+          modal?.addEventListener("click", (e) => {
+            if (e.target === modal) closeGuideDocsModal();
+          });
+
+          form?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const guideId = document.getElementById("guideDocsGuideId")?.value;
+            const contractFile = document.getElementById("guideDocsContract")?.files?.[0];
+            const cvFile = document.getElementById("guideDocsCv")?.files?.[0];
+            if (!contractFile && !cvFile) {
+              if (errEl) {
+                errEl.textContent = "Chọn ít nhất một file để cập nhật.";
+                errEl.hidden = false;
+              }
+              return;
+            }
+            if (contractFile) {
+              const n = String(contractFile.name || "").toLowerCase();
+              if (!n.endsWith(".doc") && !n.endsWith(".docx")) {
+                if (errEl) {
+                  errEl.textContent = "Hợp đồng phải là file Word (.doc hoặc .docx).";
+                  errEl.hidden = false;
+                }
+                return;
+              }
+            }
+            if (cvFile) {
+              const n = String(cvFile.name || "").toLowerCase();
+              if (!n.endsWith(".pdf")) {
+                if (errEl) {
+                  errEl.textContent = "CV phải là file PDF (.pdf).";
+                  errEl.hidden = false;
+                }
+                return;
+              }
+            }
+            try {
+              await apiPatchGuideDocuments(guideId, { contract: contractFile, cv: cvFile });
+              closeGuideDocsModal();
+              await load();
+              alert("Đã cập nhật hồ sơ tài liệu HDV.");
+            } catch (err) {
+              console.error(err);
+              if (errEl) {
+                errEl.textContent = err?.message || "Cập nhật thất bại";
+                errEl.hidden = false;
+              }
+            }
+          });
+        }
+
         function bindActions() {
           const tbody = document.querySelector("#guideTable tbody");
           if (!tbody) return;
@@ -559,6 +741,7 @@
         bindSearch();
         bindPaging();
         bindActions();
+        bindGuideDocsModal();
         bindExportGuides();
         load();
       })();

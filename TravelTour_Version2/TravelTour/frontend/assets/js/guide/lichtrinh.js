@@ -221,13 +221,6 @@ function getTourDateSet() {
   return buildTourDateSet(getActiveToursForCalendar());
 }
 
-function isPastDate(key) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const date = parseDateKey(key);
-  return date < today;
-}
-
 function populateTimeSelects() {
   const fromEl = document.getElementById("ltTimeFrom");
   const toEl = document.getElementById("ltTimeTo");
@@ -305,16 +298,13 @@ function renderCalendar() {
     const isFree = freeSet.has(key);
     const isPick = selectedDates.has(key);
     const isToday = key === todayKey;
-    const isPast = isPastDate(key);
 
     if (isToday) classes.push("lt-day--today");
     if (isPick) classes.push("lt-day--pick");
     else if (isTour) classes.push("lt-day--tour");
     else if (isFree) classes.push("lt-day--free");
 
-    if (isPast && !isFree && !isTour) classes.push("lt-day--muted");
-
-    const disabled = isTour || (isPast && !isFree);
+    const disabled = isTour;
     const marker =
       isTour || isFree
         ? '<span class="lt-day-marker" aria-hidden="true"></span>'
@@ -519,6 +509,8 @@ function renderAssignedList() {
       const badgeClass =
         item.type === "running"
           ? "lt-badge--running"
+          : item.type === "awaiting_departure"
+            ? "lt-badge--awaiting"
           : item.type === "done"
             ? "lt-badge--done"
             : "lt-badge--upcoming";
@@ -584,7 +576,6 @@ function bindEvents() {
 
     const key = btn.dataset.date;
     if (!key || getTourDateSet().has(key)) return;
-    if (isPastDate(key) && !getFreeDateSet().has(key)) return;
 
     toggleDateSelection(key);
 
@@ -633,6 +624,34 @@ function bindEvents() {
   });
 }
 
+async function fetchAbsenceYearlyStats() {
+  const response = await fetch("/api/guide/absences/yearly-stats", {
+    method: "GET",
+    headers: guideAuthHeaders(),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.success) return null;
+  return result.data || null;
+}
+
+function renderAbsenceYearlyAlert(stats) {
+  const el = document.getElementById("ltAbsenceAlert");
+  if (!el) return;
+  if (!stats?.warning) {
+    el.hidden = true;
+    el.textContent = "";
+    el.className = "lt-absence-alert";
+    return;
+  }
+  el.hidden = false;
+  el.textContent = stats.warning;
+  el.classList.toggle("lt-absence-alert--danger", Boolean(stats.isSuspended));
+  el.classList.toggle(
+    "lt-absence-alert--warn",
+    !stats.isSuspended && Number(stats.count) > 0,
+  );
+}
+
 async function initPage() {
   try {
     const raw = new URLSearchParams(window.location.search).get("tourId");
@@ -645,6 +664,13 @@ async function initPage() {
 
     await fetchAvailabilityBundle();
     schedules = await fetchSchedules("all");
+
+    try {
+      const absenceStats = await fetchAbsenceYearlyStats();
+      renderAbsenceYearlyAlert(absenceStats);
+    } catch (absenceErr) {
+      console.warn("absence yearly stats:", absenceErr);
+    }
 
     renderCalendar();
     renderSelectedChips();

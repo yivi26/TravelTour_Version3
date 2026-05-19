@@ -327,6 +327,72 @@ try {
 
 try {
   await conn.query(`
+    CREATE TABLE IF NOT EXISTS guide_absence_penalties (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      guide_id INT UNSIGNED NOT NULL,
+      absence_request_id BIGINT UNSIGNED NOT NULL,
+      tour_id INT UNSIGNED NOT NULL,
+      tour_value_base DECIMAL(14,2) NOT NULL DEFAULT 0,
+      penalty_rate DECIMAL(5,4) NOT NULL DEFAULT 0.0200,
+      penalty_amount DECIMAL(14,2) NOT NULL DEFAULT 0,
+      status ENUM('pending','settled','waived') NOT NULL DEFAULT 'pending',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_absence_penalty_request (absence_request_id),
+      KEY idx_guide_penalties_guide (guide_id, status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  console.log("guide_absence_penalties table ok");
+} catch (e) {
+  console.warn("guide_absence_penalties:", e.message);
+}
+
+try {
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS customer_coupons (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      user_id INT UNSIGNED NOT NULL,
+      provider_id INT UNSIGNED NOT NULL,
+      code VARCHAR(40) NOT NULL,
+      discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+      source_type VARCHAR(60) NOT NULL DEFAULT 'absence_cancel_compensation',
+      source_absence_request_id BIGINT UNSIGNED NULL,
+      source_booking_id BIGINT UNSIGNED NULL,
+      status ENUM('pending_claim','active','used','expired') NOT NULL DEFAULT 'pending_claim',
+      used_booking_id BIGINT UNSIGNED NULL,
+      used_at DATETIME NULL,
+      claimed_at DATETIME NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_customer_coupon_code (code),
+      KEY idx_customer_coupons_user (user_id, status),
+      KEY idx_customer_coupons_provider (provider_id, status),
+      KEY idx_customer_coupons_source_booking (source_booking_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  console.log("customer_coupons table ok");
+} catch (e) {
+  console.warn("customer_coupons:", e.message);
+}
+
+try {
+  await conn.query(`ALTER TABLE customer_notifications ADD COLUMN coupon_id BIGINT UNSIGNED NULL AFTER body`);
+  console.log("customer_notifications.coupon_id ok");
+} catch (e) {
+  if (e.code !== "ER_DUP_FIELDNAME") console.warn("customer_notifications coupon_id:", e.message);
+}
+
+try {
+  await conn.query(`
+    ALTER TABLE guides ADD COLUMN absence_suspended_until DATETIME NULL
+  `);
+  console.log("guides.absence_suspended_until ok");
+} catch (e) {
+  if (e.code !== "ER_DUP_FIELDNAME") console.warn("guides absence_suspended_until:", e.message);
+}
+
+try {
+  await conn.query(`
     CREATE TABLE IF NOT EXISTS guide_notifications (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
       guide_id INT UNSIGNED NOT NULL,
@@ -423,6 +489,53 @@ for (const sql of GUIDE_BANK_COLUMNS) {
     } else {
       console.warn("guides bank col:", e.message);
     }
+  }
+}
+
+const GUIDE_DOC_COLUMNS = [
+  "ALTER TABLE guides ADD COLUMN contract_file_url VARCHAR(500) NULL",
+  "ALTER TABLE guides ADD COLUMN cv_file_url VARCHAR(500) NULL",
+];
+for (const sql of GUIDE_DOC_COLUMNS) {
+  try {
+    await conn.query(sql);
+    console.log("guides +", sql.match(/ADD COLUMN ([^\s(]+)/)?.[1]);
+  } catch (e) {
+    if (e.code === "ER_DUP_FIELDNAME") {
+      console.log("guides exists", sql.match(/ADD COLUMN ([^\s(]+)/)?.[1]);
+    } else {
+      console.warn("guides doc col:", e.message);
+    }
+  }
+}
+
+const PROVIDER_DOC_COLUMNS = [
+  "ALTER TABLE providers ADD COLUMN contract_file_url VARCHAR(500) NULL",
+  "ALTER TABLE providers ADD COLUMN certificate_file_url VARCHAR(500) NULL",
+];
+for (const sql of PROVIDER_DOC_COLUMNS) {
+  try {
+    await conn.query(sql);
+    console.log("providers +", sql.match(/ADD COLUMN ([^\s(]+)/)?.[1]);
+  } catch (e) {
+    if (e.code === "ER_DUP_FIELDNAME") {
+      console.log("providers exists", sql.match(/ADD COLUMN ([^\s(]+)/)?.[1]);
+    } else {
+      console.warn("providers doc col:", e.message);
+    }
+  }
+}
+
+try {
+  await conn.query(
+    `ALTER TABLE booking_travelers ADD COLUMN phone VARCHAR(20) NULL AFTER id_number`,
+  );
+  console.log("booking_travelers +phone");
+} catch (e) {
+  if (e.code === "ER_DUP_FIELDNAME") {
+    console.log("booking_travelers phone exists");
+  } else {
+    console.warn("booking_travelers phone:", e.message);
   }
 }
 

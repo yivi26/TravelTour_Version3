@@ -6,6 +6,7 @@ import {
   rejectGuideAbsence,
   cancelTourForAbsence,
   countPendingAbsenceForProvider,
+  getGuideAbsenceYearlyStats,
 } from "../models/guideAbsenceModel.js";
 import { getGuidesForAssignment } from "../models/providerModel.js";
 
@@ -34,6 +35,20 @@ export async function createGuideAbsenceController(req, res) {
     return res.status(400).json({
       success: false,
       message: err.message || "Không gửi được yêu cầu báo bận",
+    });
+  }
+}
+
+/** HDV: thống kê báo bận trong năm (cảnh báo lịch trình). */
+export async function getGuideAbsenceYearlyStatsController(req, res) {
+  try {
+    const data = await getGuideAbsenceYearlyStats(req.guideId);
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    console.error("getGuideAbsenceYearlyStatsController:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi tải thống kê báo bận",
     });
   }
 }
@@ -135,10 +150,11 @@ export async function approveProviderAbsenceController(req, res) {
 export async function cancelTourForAbsenceController(req, res) {
   try {
     const requestId = Number(req.params.id);
-    const { note } = req.body || {};
+    const { note, customer_discount_percent } = req.body || {};
     const data = await cancelTourForAbsence(req.providerId, requestId, {
       note,
       resolvedByUserId: req.user?.id,
+      customerDiscountPercent: Number(customer_discount_percent) || 0,
     });
     return res.status(200).json({
       success: true,

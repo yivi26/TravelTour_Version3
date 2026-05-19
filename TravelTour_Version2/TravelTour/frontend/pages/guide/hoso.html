@@ -6,6 +6,10 @@
     <title>Hồ sơ cá nhân</title>
     <link rel="stylesheet" href="../../assets/css/guide/tongquan.css" />
     <link rel="stylesheet" href="../../assets/css/guide/hoso.css" />
+  
+    <link rel="stylesheet" href="/assets/css/common/app-toast.css" />
+    <script src="/assets/js/common/app-toast.js"></script>
+
   </head>
 
   <body>
@@ -184,14 +188,6 @@
                   </div>
 
                   <div class="info-item simple-box">
-                    <p class="info-label">Chứng chỉ</p>
-                    <div class="certificate-list info-view" id="certificateList">
-                      <p class="info-value">Đang tải...</p>
-                    </div>
-                    <textarea class="info-textarea info-edit" id="editCertificates" rows="3" placeholder="Mỗi dòng một chứng chỉ"></textarea>
-                  </div>
-
-                  <div class="info-item simple-box">
                     <p class="info-label">Chuyên môn</p>
                     <div class="tag-list info-view" id="specialtyTagList">
                       <span class="tag green-tag">Đang tải...</span>
@@ -199,13 +195,13 @@
                     <textarea class="info-textarea info-edit" id="editSpecialties" rows="3" placeholder="Mỗi dòng hoặc cách nhau bởi dấu phẩy"></textarea>
                   </div>
 
-                  <div class="info-item simple-box">
-                    <p class="info-label">Ngôn ngữ</p>
-                    <div class="language-list info-view" id="languageList">
-                      <p class="info-value">Đang tải...</p>
+                  <div class="info-item simple-box info-item--docs">
+                    <p class="info-label">Hồ sơ tài liệu</p>
+                    <div id="guideDocumentsInfo" class="guide-docs-body">
+                      <p class="info-value guide-docs-loading">Đang tải...</p>
                     </div>
-                    <textarea class="info-textarea info-edit" id="editLanguages" rows="4" placeholder="Mỗi dòng: Tiếng Anh | Thành thạo"></textarea>
                   </div>
+
                 </div>
               </div>
             </section>

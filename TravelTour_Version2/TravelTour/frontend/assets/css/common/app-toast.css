@@ -1,0 +1,126 @@
+/* Toast & confirm — dùng chung toàn hệ thống */
+.app-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 100000;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 16px 22px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: center;
+  color: #0f172a;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.22);
+  opacity: 0;
+  transform: translate(-50%, calc(-50% - 10px));
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.app-toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+.app-toast--success {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #065f46;
+}
+
+.app-toast--error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.app-toast--info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e40af;
+}
+
+.app-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.app-confirm[hidden] {
+  display: none !important;
+}
+
+.app-confirm__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.app-confirm__panel {
+  position: relative;
+  z-index: 1;
+  width: min(400px, 100%);
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+}
+
+.app-confirm__message {
+  margin: 0 0 18px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #0f172a;
+}
+
+.app-confirm__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.app-confirm__btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-confirm__btn--cancel {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.app-confirm__btn--cancel:hover {
+  background: #e2e8f0;
+}
+
+.app-confirm__btn--ok {
+  background: #059669;
+  color: #fff;
+}
+
+.app-confirm__btn--ok:hover {
+  background: #047857;
+}
+
+.app-confirm__btn--danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.app-confirm__btn--danger:hover {
+  background: #b91c1c;
+}

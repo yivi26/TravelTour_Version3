@@ -1,4 +1,6 @@
 import db from "../config/db.js";
+import { BOOKED_PARTICIPANTS_JOIN } from "./providerModel.js";
+import { buildTourDeparturePayload } from "../utils/tourDepartureRules.js";
 
 function parseCommaList(value) {
   if (!value) return [];
@@ -43,6 +45,45 @@ function serializeLanguages(languages) {
     })
     .filter(Boolean);
   return parts.length ? parts.join(",") : null;
+}
+
+/** Điểm HDV từ reviews.guide_rating (cột guides.rating_* thường không được cập nhật khi khách đánh giá). */
+export async function getGuideRatingFromReviews(guideId) {
+  const gid = Number(guideId);
+  if (!gid) return { rating_avg: 0, rating_count: 0 };
+
+  const [[row]] = await db.query(
+    `
+    SELECT
+      COUNT(*) AS rating_count,
+      COALESCE(AVG(r.guide_rating), 0) AS rating_avg
+    FROM reviews r
+    INNER JOIN tours t ON t.id = r.tour_id
+    WHERE t.guide_id = ?
+      AND r.guide_rating IS NOT NULL
+      AND r.guide_rating > 0
+    `,
+    [gid]
+  );
+
+  const rating_count = Number(row?.rating_count || 0);
+  const rating_avg =
+    rating_count > 0 ? Math.round(Number(row.rating_avg) * 10) / 10 : 0;
+
+  return { rating_avg, rating_count };
+}
+
+export async function refreshGuideRatingAggregate(guideId) {
+  const { rating_avg, rating_count } = await getGuideRatingFromReviews(guideId);
+  const gid = Number(guideId);
+  if (!gid) return { rating_avg, rating_count };
+
+  await db.query(
+    `UPDATE guides SET rating_avg = ?, rating_count = ? WHERE id = ?`,
+    [rating_avg, rating_count, gid]
+  );
+
+  return { rating_avg, rating_count };
 }
 
 export async function getGuideDashboardData(guideId) {
@@ -131,8 +172,11 @@ export async function getGuideSchedules(guideId, filter = "all") {
       t.end_date,
       t.status,
       t.max_capacity,
-      t.guide_completed_at
+      t.guide_id,
+      t.guide_completed_at,
+      COALESCE(bp.booked_participants, 0) AS booked_participants
     FROM tours t
+    ${BOOKED_PARTICIPANTS_JOIN}
     WHERE t.guide_id = ?
   `;
 
@@ -188,8 +232,11 @@ export async function getCurrentToursByGuide(guideId, keyword = "") {
       t.end_date,
       t.duration_text,
       t.max_capacity,
-      t.status
+      t.guide_id,
+      t.status,
+      COALESCE(bp.booked_participants, 0) AS booked_participants
     FROM tours t
+    ${BOOKED_PARTICIPANTS_JOIN}
     WHERE t.guide_id = ?
       AND t.status IN ('active', 'paused', 'full')
       AND t.guide_completed_at IS NULL
@@ -422,46 +469,140 @@ export async function getGuideIncomeData(guideId, monthRange = 6) {
   };
 }
 
-export async function getTourProviderInfoForGuide(guideId, tourId) {
+/**
+ * Lấy danh sách khách (người đặt + thành viên đặt cùng) của một tour mà HDV đang dẫn.
+ * Trả về theo từng booking để FE có thể nhóm hoặc render phẳng.
+ */
+export async function getTourCustomersForGuide(guideId, tourId) {
   const gid = Number(guideId);
   const tid = Number(tourId);
   if (!gid || !tid) return null;
 
-  const [rows] = await db.query(
+  // Xác nhận HDV thực sự phụ trách tour
+  const [[tour]] = await db.query(
     `
-    SELECT
-      t.id AS tour_id,
-      t.title AS tour_title,
-      t.location AS tour_location,
-      p.id AS provider_id,
-      p.company_name,
-      p.phone AS provider_phone,
-      p.hotline AS provider_hotline,
-      p.email AS provider_email,
-      p.website_url AS provider_website,
-      p.address AS provider_address,
-      p.description AS provider_description,
-      p.logo_url AS provider_logo,
-      p.bank_name AS provider_bank_name,
-      p.bank_branch AS provider_bank_branch,
-      p.bank_account_number AS provider_bank_account_number,
-      p.bank_account_name AS provider_bank_account_name,
-      p.tax_code AS provider_tax_code,
-      u.full_name AS contact_full_name,
-      u.email AS contact_email,
-      u.phone AS contact_phone,
-      u.avatar_url AS contact_avatar
-    FROM tours t
-    JOIN providers p ON p.id = t.provider_id
-    LEFT JOIN users u ON u.id = p.user_id
-    WHERE t.id = ?
-      AND t.guide_id = ?
+    SELECT id, title, start_date, end_date, location
+    FROM tours
+    WHERE id = ? AND guide_id = ?
     LIMIT 1
     `,
     [tid, gid],
   );
+  if (!tour) return null;
 
-  return rows[0] || null;
+  const [bookings] = await db.query(
+    `
+    SELECT
+      b.id AS booking_id,
+      b.booking_code,
+      b.status,
+      b.num_adults,
+      b.num_children,
+      b.num_infants,
+      b.booked_at,
+      COALESCE(NULLIF(TRIM(b.contact_name), ''),  u.full_name) AS booker_name,
+      COALESCE(NULLIF(TRIM(b.contact_phone), ''), NULLIF(TRIM(u.phone), ''), '') AS booker_phone,
+      COALESCE(NULLIF(TRIM(b.contact_email), ''), NULLIF(TRIM(u.email), ''), '') AS booker_email,
+      u.id AS booker_user_id
+    FROM bookings b
+    JOIN users u ON u.id = b.user_id
+    WHERE b.tour_id = ?
+      AND b.status IN ('confirmed','paid','in_progress','completed')
+    ORDER BY b.id ASC
+    `,
+    [tid],
+  );
+
+  if (!bookings.length) {
+    return {
+      tour: {
+        id: tour.id,
+        title: tour.title,
+        start_date: tour.start_date,
+        end_date: tour.end_date,
+        location: tour.location || "",
+      },
+      bookings: [],
+      total_customers: 0,
+    };
+  }
+
+  const bookingIds = bookings.map((b) => b.booking_id);
+  const placeholders = bookingIds.map(() => "?").join(",");
+
+  // Một số DB cũ chưa có cột phone — fallback graceful nếu lỗi.
+  let travelers = [];
+  try {
+    const [rows] = await db.query(
+      `
+      SELECT id, booking_id, full_name, birth_date, gender, id_number, phone, traveler_type
+      FROM booking_travelers
+      WHERE booking_id IN (${placeholders})
+      ORDER BY booking_id ASC, id ASC
+      `,
+      bookingIds,
+    );
+    travelers = rows;
+  } catch (err) {
+    const [rows] = await db.query(
+      `
+      SELECT id, booking_id, full_name, birth_date, gender, id_number, traveler_type
+      FROM booking_travelers
+      WHERE booking_id IN (${placeholders})
+      ORDER BY booking_id ASC, id ASC
+      `,
+      bookingIds,
+    );
+    travelers = rows;
+  }
+
+  const grouped = new Map();
+  for (const t of travelers) {
+    if (!grouped.has(t.booking_id)) grouped.set(t.booking_id, []);
+    grouped.get(t.booking_id).push({
+      id: Number(t.id),
+      full_name: t.full_name || "",
+      birth_date: t.birth_date || null,
+      gender: t.gender || "other",
+      id_number: t.id_number || "",
+      phone: t.phone || "",
+      traveler_type: t.traveler_type || "adult",
+    });
+  }
+
+  let totalCustomers = 0;
+  const result = bookings.map((b) => {
+    const tvs = grouped.get(b.booking_id) || [];
+    totalCustomers += 1 + tvs.length;
+    return {
+      booking_id: Number(b.booking_id),
+      booking_code: b.booking_code || "",
+      status: b.status,
+      num_adults: Number(b.num_adults || 0),
+      num_children: Number(b.num_children || 0),
+      num_infants: Number(b.num_infants || 0),
+      booked_at: b.booked_at,
+      booker: {
+        user_id: Number(b.booker_user_id || 0),
+        name: b.booker_name || "Khách hàng",
+        phone: b.booker_phone || "",
+        email: b.booker_email || "",
+      },
+      travelers: tvs,
+    };
+  });
+
+  return {
+    tour: {
+      id: tour.id,
+      title: tour.title,
+      start_date: tour.start_date,
+      end_date: tour.end_date,
+      location: tour.location || "",
+    },
+    bookings: result,
+    total_customers: totalCustomers,
+  };
 }
 
 export async function getGuideProfileData(guideId) {
@@ -478,6 +619,8 @@ export async function getGuideProfileData(guideId) {
       g.bio,
       g.certification,
       g.specialty,
+      g.contract_file_url,
+      g.cv_file_url,
       u.full_name,
       u.email,
       u.phone,
@@ -516,6 +659,8 @@ export async function getGuideProfileData(guideId) {
   const languages = parseLanguagesField(guideRow.languages);
   const specialties = parseCommaList(guideRow.specialty);
   const certificates = parseCommaList(guideRow.certification);
+  const { rating_avg: ratingAvg, rating_count: reviewCount } =
+    await getGuideRatingFromReviews(guideId);
 
   return {
     id: guideRow.id,
@@ -527,16 +672,18 @@ export async function getGuideProfileData(guideId) {
     avatarUrl: guideRow.avatar_url || "",
     role: "Hướng dẫn viên du lịch",
     badgeText: "Hướng dẫn viên chuyên nghiệp",
-    rating: Number(guideRow.rating_avg || 0),
-    reviewCount: Number(guideRow.rating_count || 0),
+    rating: ratingAvg,
+    reviewCount,
     experienceYears: Number(guideRow.experience_years || 0),
     bio: guideRow.bio || "",
     certificates,
     specialties,
     languages,
+    contractFileUrl: guideRow.contract_file_url || "",
+    cvFileUrl: guideRow.cv_file_url || "",
     stats: {
       totalTours: Number(tourCountRow?.total || 0),
-      averageRating: Number(guideRow.rating_avg || 0),
+      averageRating: ratingAvg,
       experienceYears: Number(guideRow.experience_years || 0),
       satisfactionRate: 98,
       completedTours: Number(completedRow?.total || 0)

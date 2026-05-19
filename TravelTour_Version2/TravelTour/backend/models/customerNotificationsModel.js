@@ -24,6 +24,18 @@ export async function ensureCustomerNotificationsTable() {
   tableReady = true;
 }
 
+async function ensureCouponColumn() {
+  try {
+    await db.query(
+      `ALTER TABLE customer_notifications ADD COLUMN coupon_id BIGINT UNSIGNED NULL AFTER body`,
+    );
+  } catch (err) {
+    if (err.code !== "ER_DUP_FIELDNAME") {
+      console.warn("customer_notifications coupon_id:", err.message);
+    }
+  }
+}
+
 export async function createCustomerNotification({
   userId,
   bookingId,
@@ -31,14 +43,16 @@ export async function createCustomerNotification({
   type,
   title,
   body,
+  couponId = null,
 }) {
   if (!userId || !title || !body) return null;
   await ensureCustomerNotificationsTable();
+  if (couponId) await ensureCouponColumn();
   const [result] = await db.query(
     `
     INSERT INTO customer_notifications
-      (user_id, booking_id, tour_id, type, title, body, is_read)
-    VALUES (?, ?, ?, ?, ?, ?, 0)
+      (user_id, booking_id, tour_id, type, title, body, coupon_id, is_read)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0)
     `,
     [
       Number(userId),
@@ -47,6 +61,7 @@ export async function createCustomerNotification({
       String(type || "info"),
       String(title),
       String(body),
+      couponId ? Number(couponId) : null,
     ],
   );
   return { id: result.insertId };
@@ -112,6 +127,12 @@ function mapRow(row) {
     bookingId: row.booking_id,
     tourId: row.tour_id,
     tourTitle: row.tour_title || null,
+    couponId: row.coupon_id ?? null,
+    couponCode: row.coupon_code || null,
+    couponDiscountPercent: row.coupon_discount_percent != null
+      ? Number(row.coupon_discount_percent)
+      : null,
+    couponStatus: row.coupon_status || null,
     isRead: Number(row.is_read) === 1,
     createdAt: row.created_at,
   };
@@ -123,13 +144,19 @@ export async function getCustomerNotifications(userId, options = {}) {
   const unreadOnly = Boolean(options.unreadOnly);
   const whereUnread = unreadOnly ? " AND n.is_read = 0 " : "";
 
+  await ensureCouponColumn();
   const [rows] = await db.query(
     `
     SELECT
       n.id, n.type, n.title, n.body, n.booking_id, n.tour_id, n.is_read, n.created_at,
-      t.title AS tour_title
+      n.coupon_id,
+      t.title AS tour_title,
+      c.code AS coupon_code,
+      c.discount_percent AS coupon_discount_percent,
+      c.status AS coupon_status
     FROM customer_notifications n
     LEFT JOIN tours t ON t.id = n.tour_id
+    LEFT JOIN customer_coupons c ON c.id = n.coupon_id
     WHERE n.user_id = ? ${whereUnread}
     ORDER BY n.created_at DESC, n.id DESC
     LIMIT ?

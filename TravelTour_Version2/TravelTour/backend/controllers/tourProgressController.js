@@ -60,15 +60,19 @@ export async function completeGuideTourController(req, res) {
   } catch (err) {
     console.error("COMPLETE GUIDE TOUR:", err);
     const msg = err.message || "Không hoàn thành được tour";
-    let status = 500;
+    let status = err.statusCode || 500;
     if (msg.includes("phân công")) status = 403;
     else if (
       msg.includes("hoạt động") ||
-      msg.includes("đã được đánh dấu")
+      msg.includes("đã được đánh dấu") ||
+      msg.includes("khởi hành")
     ) {
       status = 400;
     }
-    return res.status(status).json({ message: msg });
+    return res.status(status).json({
+      message: msg,
+      departureEligibility: err.departureEligibility || null,
+    });
   }
 }
 
@@ -93,10 +97,10 @@ export async function saveGuideTourProgressController(req, res) {
     });
   } catch (err) {
     console.error("SAVE GUIDE TOUR PROGRESS:", err);
-    const status =
-      err.message === "Bạn chưa được phân công tour này" ? 403 : 500;
+    const status = err.statusCode || (err.message === "Bạn chưa được phân công tour này" ? 403 : 500);
     return res.status(status).json({
       message: err.message || "Không lưu được tiến độ tour",
+      departureEligibility: err.departureEligibility || null,
     });
   }
 }

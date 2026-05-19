@@ -591,3 +591,215 @@
     width: 100%;
   }
 }
+
+/* Thông tin tài khoản ngân hàng (full width) */
+.info-card--bank {
+  grid-column: 1 / -1;
+}
+
+.info-item--docs {
+  padding: 16px 18px;
+}
+
+.guide-docs-body {
+  display: grid;
+  gap: 14px;
+}
+
+.guide-doc-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guide-doc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #15803d;
+  font-weight: 600;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.guide-doc-link:hover {
+  text-decoration: underline;
+}
+
+.guide-doc-empty,
+.guide-docs-loading {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.guide-doc-empty {
+  color: #b45309;
+}
+
+.info-card--bank .small-title {
+  margin-bottom: 0;
+}
+
+.bank-info-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.bank-info-update-btn {
+  flex-shrink: 0;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bank-info-update-btn:hover {
+  background: #15803d;
+}
+
+.bank-info-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.bank-info-field {
+  margin: 0;
+}
+
+.bank-info-empty,
+.bank-info-loading {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.bank-info-empty {
+  color: #b45309;
+}
+
+@media (max-width: 900px) {
+  .bank-info-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .bank-info-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .bank-info-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bank-info-update-btn {
+    width: 100%;
+  }
+}
+
+/* Modal cập nhật STK */
+.bank-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.bank-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  cursor: pointer;
+}
+
+.bank-modal__dialog {
+  position: relative;
+  background: #fff;
+  border-radius: 14px;
+  width: min(480px, 92vw);
+  padding: 18px 20px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2);
+}
+
+.bank-modal__dialog header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.bank-modal__dialog header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #111827;
+}
+
+.bank-modal__dialog header button {
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+#bankForm label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #374151;
+}
+
+#bankForm input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13.5px;
+  box-sizing: border-box;
+}
+
+#bankForm input:focus {
+  outline: 2px solid #86efac;
+  border-color: #16a34a;
+}
+
+.bank-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.bank-modal__actions .btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bank-modal__actions .btn--ghost {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.bank-modal__actions .btn--primary {
+  background: #16a34a;
+  color: #fff;
+}

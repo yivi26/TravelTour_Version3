@@ -1,5 +1,6 @@
 import db from "../config/db.js";
 import { createGuideEarningsForCompletedTour } from "./commissionModel.js";
+import { assertTourDepartureAllowedForOperations } from "./tourDepartureModel.js";
 
 function toLocalYmd(value) {
   if (value == null || value === "") return null;
@@ -269,6 +270,8 @@ export async function saveTourProgressForGuide(guideId, tourId, completedActivit
     throw new Error("Bạn chưa được phân công tour này");
   }
 
+  await assertTourDepartureAllowedForOperations(tourId);
+
   const ids = normalizeCompletedIds(completedActivityIds);
   const json = JSON.stringify(ids);
 
@@ -292,6 +295,8 @@ export async function completeTourForGuide(guideId, tourId) {
   if (!tour) {
     throw new Error("Bạn chưa được phân công tour này");
   }
+
+  await assertTourDepartureAllowedForOperations(tourId);
 
   const progress = await getProgressRow(tourId);
   if (progress?.guide_completed_at || tour.guide_completed_at) {

@@ -408,7 +408,7 @@ async function uploadCustomerAvatar(file) {
 async function removeCustomerAvatar() {
   const btn = document.getElementById("removeAvatarBtn");
   if (!btn || btn.disabled) return;
-  if (!window.confirm("Bạn có chắc muốn gỡ ảnh đại diện?")) return;
+  if (!(await showAppConfirm("Bạn có chắc muốn gỡ ảnh đại diện?")) return;
 
   try {
     const response = await fetch(`${API_ORIGIN}/api/customer/avatar`, {

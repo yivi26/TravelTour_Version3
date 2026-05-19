@@ -71,7 +71,9 @@
         }
         const role = String(getCurrentUser()?.role || "").toLowerCase();
         if (role === "customer" && window.NavbarAvatar?.syncNavbarUserAvatar) {
-          void window.NavbarAvatar.syncNavbarUserAvatar();
+          void window.NavbarAvatar.syncNavbarUserAvatar().then(() => {
+            window.CustomerNotifications?.syncNavbarBell?.();
+          });
         } else if (window.NavbarAvatar?.setSafeAvatar) {
           const img =
             document.getElementById("navbarUserAvatar") ||
@@ -87,6 +89,8 @@
         userIcon.href = getLoginHref();
       }
     }
+
+    window.CustomerNotifications?.syncNavbarBell?.();
   }
 
   function bindPublicNavbarAuth() {
@@ -137,11 +141,17 @@
     getHomeHref
   };
 
-  document.addEventListener("DOMContentLoaded", () => {
+  function bootPublicNavbar() {
     if (!document.querySelector(".nav-actions")) return;
     if (document.getElementById("our-tours-list") || document.getElementById("featured-tours-list")) {
       return;
     }
     initPublicNavbar();
-  });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootPublicNavbar);
+  } else {
+    bootPublicNavbar();
+  }
 })();

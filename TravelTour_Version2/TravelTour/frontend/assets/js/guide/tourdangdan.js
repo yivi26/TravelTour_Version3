@@ -2,6 +2,7 @@ let currentTours = [];
 /** Từ `lichtrinh.html?tourId=` → tourdangdan: làm nổi bật đúng tour. */
 let urlTourHighlightId = null;
 let activeProgressTourId = null;
+let activeContactTourId = null;
 /** @type {{ tourView: object, days: object[] } | null} */
 let progressPanelCache = null;
 /** @type {Map<number, Set<string>>} */
@@ -36,32 +37,235 @@ function hasText(value) {
   return String(value ?? "").trim() !== "";
 }
 
-async function fetchTourProviderInfo(tourId) {
-  const response = await fetch(`/api/guide/tours/${encodeURIComponent(tourId)}/provider`, {
-    method: "GET",
-    headers: guideAuthHeaders(),
-  });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok || !result.success) {
-    throw new Error(result.message || "Không tải được thông tin nhà cung cấp.");
+async function fetchTourCustomers(tourId) {
+  const res = await fetch(
+    `/api/guide/tours/${encodeURIComponent(tourId)}/customers`,
+    { method: "GET", headers: guideAuthHeaders() },
+  );
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || "Không tải được danh sách khách hàng");
   }
-  return result.data;
+  return json.data;
 }
 
-function ensureProviderContactModal() {
-  let modal = document.getElementById("providerContactModal");
+function travelerTypeLabel(type) {
+  if (type === "child") return "Trẻ em";
+  if (type === "infant") return "Em bé";
+  return "Người lớn";
+}
+
+function genderLabel(g) {
+  if (g === "male") return "Nam";
+  if (g === "female") return "Nữ";
+  return "Khác";
+}
+
+function renderContactPanelContent(data) {
+  const tour = data?.tour || {};
+  const bookings = Array.isArray(data?.bookings) ? data.bookings : [];
+  const dateRange = `${formatDateVN(tour.start_date)} – ${formatDateVN(tour.end_date)}`;
+
+  if (!bookings.length) {
+    return `
+      <header class="tour-contact__header">
+        <div>
+          <h3 class="tour-contact__title">Liên hệ khách</h3>
+          <p class="tour-contact__subtitle">${escapeHtml(tour.title || "")} · ${escapeHtml(dateRange)}</p>
+        </div>
+        <button type="button" class="tour-contact__close" data-close-contact aria-label="Đóng">&times;</button>
+      </header>
+      <p class="tour-contact__empty">Chưa có khách đặt tour này.</p>
+    `;
+  }
+
+  let stt = 0;
+  const rowsHtml = bookings
+    .map((b) => {
+      const bookerStt = ++stt;
+      const bookerRow = `
+        <tr class="tour-contact__row tour-contact__row--booker">
+          <td class="tour-contact__stt">${bookerStt}</td>
+          <td>
+            <div class="tour-contact__name">${escapeHtml(b.booker.name || "Khách hàng")}</div>
+            <div class="tour-contact__meta">
+              <span class="tour-contact__chip tour-contact__chip--booker">Người đặt</span>
+              <span class="tour-contact__chip">${escapeHtml(b.booking_code || ("#" + b.booking_id))}</span>
+            </div>
+          </td>
+          <td>
+            ${
+              b.booker.phone
+                ? `<a class="tour-contact__link" href="tel:${escapeHtml(b.booker.phone)}">${escapeHtml(b.booker.phone)}</a>`
+                : '<span class="tour-contact__muted">—</span>'
+            }
+          </td>
+          <td>
+            ${
+              b.booker.email
+                ? `<a class="tour-contact__link" href="mailto:${escapeHtml(b.booker.email)}">${escapeHtml(b.booker.email)}</a>`
+                : '<span class="tour-contact__muted">—</span>'
+            }
+          </td>
+        </tr>
+      `;
+
+      const travelerRows = (b.travelers || [])
+        .map((t) => {
+          const s = ++stt;
+          return `
+            <tr class="tour-contact__row tour-contact__row--traveler">
+              <td class="tour-contact__stt">${s}</td>
+              <td>
+                <div class="tour-contact__name">${escapeHtml(t.full_name || "")}</div>
+                <div class="tour-contact__meta">
+                  <span class="tour-contact__chip tour-contact__chip--traveler">Thành viên</span>
+                  <span class="tour-contact__chip">${escapeHtml(travelerTypeLabel(t.traveler_type))}</span>
+                  <span class="tour-contact__chip">${escapeHtml(genderLabel(t.gender))}</span>
+                  ${t.id_number ? `<span class="tour-contact__chip">CMND/CCCD: ${escapeHtml(t.id_number)}</span>` : ""}
+                </div>
+              </td>
+              <td>
+                ${
+                  t.phone
+                    ? `<a class="tour-contact__link" href="tel:${escapeHtml(t.phone)}">${escapeHtml(t.phone)}</a>`
+                    : '<span class="tour-contact__muted">—</span>'
+                }
+              </td>
+              <td>
+                <span class="tour-contact__muted tour-contact__hint">Liên hệ qua người đặt</span>
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      return bookerRow + travelerRows;
+    })
+    .join("");
+
+  return `
+    <header class="tour-contact__header">
+      <div>
+        <h3 class="tour-contact__title">Liên hệ khách</h3>
+        <p class="tour-contact__subtitle">${escapeHtml(tour.title || "")} · ${escapeHtml(dateRange)}</p>
+      </div>
+      <button type="button" class="tour-contact__close" data-close-contact aria-label="Đóng">&times;</button>
+    </header>
+
+    <div class="tour-contact__stats">
+      <article class="tour-contact__stat">
+        <span>Tổng booking</span><strong>${bookings.length}</strong>
+      </article>
+      <article class="tour-contact__stat">
+        <span>Tổng khách</span><strong>${data.total_customers || 0}</strong>
+      </article>
+    </div>
+
+    <div class="tour-contact__scroll">
+      <table class="tour-contact__table">
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Khách hàng</th>
+            <th>Số điện thoại</th>
+            <th>Email</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function closeContactPanel() {
+  activeContactTourId = null;
+  const workspace = document.getElementById("tourWorkspace");
+  const panel = document.getElementById("tourContactPanel");
+  if (workspace && activeProgressTourId == null) {
+    workspace.classList.remove("has-progress");
+  }
+  if (panel) {
+    panel.hidden = true;
+    panel.setAttribute("aria-hidden", "true");
+    panel.innerHTML = "";
+  }
+  document
+    .querySelectorAll(".btn-contact.is-active")
+    .forEach((btn) => btn.classList.remove("is-active"));
+  document
+    .querySelectorAll(".tour-card--contact-active")
+    .forEach((card) => card.classList.remove("tour-card--contact-active"));
+}
+
+async function openContactPanel(tourId) {
+  const workspace = document.getElementById("tourWorkspace");
+  const panel = document.getElementById("tourContactPanel");
+  if (!panel) return;
+
+  if (activeContactTourId === Number(tourId)) {
+    closeContactPanel();
+    return;
+  }
+
+  // Đóng panel tiến độ nếu đang mở để tránh chồng nhau
+  if (activeProgressTourId != null) {
+    closeProgressPanel();
+  }
+
+  activeContactTourId = Number(tourId);
+  if (workspace) workspace.classList.add("has-progress");
+  panel.hidden = false;
+  panel.setAttribute("aria-hidden", "false");
+  panel.innerHTML = '<div class="tour-contact__loading">Đang tải danh sách khách hàng...</div>';
+
+  document.querySelectorAll(".btn-contact").forEach((btn) => {
+    btn.classList.toggle(
+      "is-active",
+      Number(btn.getAttribute("data-id")) === Number(tourId) &&
+        btn.getAttribute("data-action") === "contact",
+    );
+  });
+  document.querySelectorAll(".tour-card").forEach((card) => {
+    card.classList.toggle(
+      "tour-card--contact-active",
+      Number(card.getAttribute("data-tour-id")) === Number(tourId),
+    );
+  });
+
+  try {
+    const data = await fetchTourCustomers(tourId);
+    panel.innerHTML = renderContactPanelContent(data);
+  } catch (err) {
+    panel.innerHTML = `
+      <header class="tour-contact__header">
+        <div><h3 class="tour-contact__title">Liên hệ khách</h3></div>
+        <button type="button" class="tour-contact__close" data-close-contact aria-label="Đóng">&times;</button>
+      </header>
+      <p class="tour-contact__empty tour-contact__empty--error">${escapeHtml(err.message || "Có lỗi xảy ra")}</p>
+    `;
+  }
+}
+
+function ensureAbsenceConsentModal() {
+  let modal = document.getElementById("absenceConsentModal");
   if (modal) return modal;
 
   modal = document.createElement("div");
-  modal.id = "providerContactModal";
-  modal.className = "provider-contact-modal";
+  modal.id = "absenceConsentModal";
+  modal.className = "absence-modal absence-modal--consent";
   modal.hidden = true;
   modal.innerHTML = `
-    <div class="provider-contact-modal__backdrop" data-close-provider></div>
-    <div class="provider-contact-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="providerContactTitle">
-      <button type="button" class="provider-contact-modal__close" data-close-provider aria-label="Đóng">&times;</button>
-      <div class="provider-contact-modal__body" data-role="body">
-        <p class="provider-contact-modal__loading">Đang tải thông tin nhà cung cấp...</p>
+    <div class="absence-modal__backdrop" data-close-consent></div>
+    <div class="absence-modal__dialog" role="dialog" aria-modal="true">
+      <h2 class="absence-modal__title">Báo bận khẩn cấp</h2>
+      <p class="absence-consent__text">
+        Nhà cung cấp sẽ hỗ trợ bạn tìm kiếm người thay thế. Nếu không có hướng dẫn viên phù hợp thì bạn phải chịu mức đền bù <strong>2%</strong> trên tổng giá trị tour.
+        Bạn vui lòng đợi phản hồi từ phía Nhà Cung Cấp.
+      </p>
+      <div class="absence-modal__actions">
+        <button type="button" class="absence-modal__btn absence-modal__btn--ghost" data-close-consent>Thoát</button>
+        <button type="button" class="absence-modal__btn absence-modal__btn--primary" data-role="consent-agree">Đồng ý</button>
       </div>
     </div>
   `;
@@ -69,8 +273,8 @@ function ensureProviderContactModal() {
   return modal;
 }
 
-function closeProviderContactModal() {
-  const modal = document.getElementById("providerContactModal");
+function closeAbsenceConsentModal() {
+  const modal = document.getElementById("absenceConsentModal");
   if (!modal) return;
   modal.classList.remove("is-visible");
   window.setTimeout(() => {
@@ -78,102 +282,12 @@ function closeProviderContactModal() {
   }, 180);
 }
 
-function renderProviderContactModalBody(data) {
-  const provider = data?.provider || {};
-  const tour = data?.tour || {};
-  const contact = provider.contact || {};
-  const bank = provider.bank || {};
-
-  const logoBlock = provider.logoUrl
-    ? `<img class="provider-contact-modal__logo" src="${escapeHtml(provider.logoUrl)}" alt="Logo nhà cung cấp" />`
-    : `<div class="provider-contact-modal__logo provider-contact-modal__logo--placeholder">${escapeHtml((provider.companyName || "T").charAt(0).toUpperCase())}</div>`;
-
-  const hotline = provider.hotline || provider.phone;
-  const phoneRow = hotline
-    ? `<a class="provider-contact-modal__row" href="tel:${escapeHtml(hotline)}">
-         <span class="provider-contact-modal__icon">📞</span>
-         <div><span class="provider-contact-modal__label">Hotline</span><strong>${escapeHtml(hotline)}</strong></div>
-       </a>`
-    : "";
-
-  const emailRow = provider.email
-    ? `<a class="provider-contact-modal__row" href="mailto:${escapeHtml(provider.email)}">
-         <span class="provider-contact-modal__icon">✉️</span>
-         <div><span class="provider-contact-modal__label">Email</span><strong>${escapeHtml(provider.email)}</strong></div>
-       </a>`
-    : "";
-
-  const websiteRow = provider.website
-    ? `<a class="provider-contact-modal__row" href="${escapeHtml(provider.website)}" target="_blank" rel="noopener noreferrer">
-         <span class="provider-contact-modal__icon">🌐</span>
-         <div><span class="provider-contact-modal__label">Website</span><strong>${escapeHtml(provider.website)}</strong></div>
-       </a>`
-    : "";
-
-  const addressRow = provider.address
-    ? `<div class="provider-contact-modal__row">
-         <span class="provider-contact-modal__icon">📍</span>
-         <div><span class="provider-contact-modal__label">Địa chỉ</span><strong>${escapeHtml(provider.address)}</strong></div>
-       </div>`
-    : "";
-
-  const contactPersonRow = contact.fullName
-    ? `<div class="provider-contact-modal__row">
-         <span class="provider-contact-modal__icon">👤</span>
-         <div>
-           <span class="provider-contact-modal__label">Người liên hệ</span>
-           <strong>${escapeHtml(contact.fullName)}</strong>
-           ${contact.phone ? `<span class="provider-contact-modal__sub">SĐT: ${escapeHtml(contact.phone)}</span>` : ""}
-           ${contact.email ? `<span class="provider-contact-modal__sub">Email: ${escapeHtml(contact.email)}</span>` : ""}
-         </div>
-       </div>`
-    : "";
-
-  const bankParts = [];
-  if (bank.name) bankParts.push(`${escapeHtml(bank.name)}${bank.branch ? ` – ${escapeHtml(bank.branch)}` : ""}`);
-  if (bank.accountNumber) bankParts.push(`STK: ${escapeHtml(bank.accountNumber)}`);
-  if (bank.accountName) bankParts.push(`Chủ TK: ${escapeHtml(bank.accountName)}`);
-  const bankRow = bankParts.length
-    ? `<div class="provider-contact-modal__row">
-         <span class="provider-contact-modal__icon">🏦</span>
-         <div>
-           <span class="provider-contact-modal__label">Ngân hàng</span>
-           ${bankParts.map((p) => `<strong class="provider-contact-modal__line">${p}</strong>`).join("")}
-         </div>
-       </div>`
-    : "";
-
-  const description = provider.description
-    ? `<p class="provider-contact-modal__desc">${formatMultiline(provider.description)}</p>`
-    : "";
-
-  return `
-    <header class="provider-contact-modal__header">
-      ${logoBlock}
-      <div>
-        <h2 id="providerContactTitle" class="provider-contact-modal__title">${escapeHtml(provider.companyName || "Nhà cung cấp tour")}</h2>
-        <p class="provider-contact-modal__tour">Tour: <strong>${escapeHtml(tour.title || "—")}</strong></p>
-      </div>
-    </header>
-    ${description}
-    <section class="provider-contact-modal__list">
-      ${phoneRow}
-      ${provider.phone && provider.hotline && provider.phone !== provider.hotline ? `
-        <a class="provider-contact-modal__row" href="tel:${escapeHtml(provider.phone)}">
-          <span class="provider-contact-modal__icon">☎️</span>
-          <div><span class="provider-contact-modal__label">SĐT cố định</span><strong>${escapeHtml(provider.phone)}</strong></div>
-        </a>` : ""}
-      ${emailRow}
-      ${websiteRow}
-      ${addressRow}
-      ${contactPersonRow}
-      ${bankRow}
-    </section>
-    <footer class="provider-contact-modal__footer">
-      ${hotline ? `<a class="provider-contact-modal__cta" href="tel:${escapeHtml(hotline)}">Gọi ngay</a>` : ""}
-      ${provider.email ? `<a class="provider-contact-modal__cta provider-contact-modal__cta--outline" href="mailto:${escapeHtml(provider.email)}">Gửi email</a>` : ""}
-    </footer>
-  `;
+function openAbsenceConsentModal(tourId, tourName) {
+  const modal = ensureAbsenceConsentModal();
+  modal.dataset.tourId = String(tourId);
+  modal.dataset.tourName = tourName || "";
+  modal.hidden = false;
+  requestAnimationFrame(() => modal.classList.add("is-visible"));
 }
 
 function ensureAbsenceModal() {
@@ -365,32 +479,14 @@ async function handleAbsenceFormSubmit(event) {
     }
     alert(result.message || "Đã gửi yêu cầu báo bận tới nhà cung cấp.");
     closeAbsenceModal();
+    const keyword = document.getElementById("tourSearchInput")?.value || "";
+    renderTours(keyword);
   } catch (err) {
     errBox.textContent = err.message || "Có lỗi xảy ra";
     errBox.hidden = false;
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = originalText;
-  }
-}
-
-async function openProviderContactModal(tourId) {
-  const modal = ensureProviderContactModal();
-  const body = modal.querySelector('[data-role="body"]');
-
-  modal.hidden = false;
-  requestAnimationFrame(() => modal.classList.add("is-visible"));
-  if (body) {
-    body.innerHTML = '<p class="provider-contact-modal__loading">Đang tải thông tin nhà cung cấp...</p>';
-  }
-
-  try {
-    const data = await fetchTourProviderInfo(tourId);
-    if (body) body.innerHTML = renderProviderContactModalBody(data);
-  } catch (error) {
-    if (body) {
-      body.innerHTML = `<p class="provider-contact-modal__error">${escapeHtml(error.message || "Không tải được thông tin nhà cung cấp.")}</p>`;
-    }
   }
 }
 
@@ -672,15 +768,33 @@ async function showTourDetailModal(tourId) {
   }
 }
 
-function parseDateOnly(value) {
-  if (!value) return null;
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function toDateKey(date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+/** Chuẩn hóa ngày từ API (ISO UTC hoặc YYYY-MM-DD) → YYYY-MM-DD theo giờ local. */
+function normalizeDateKey(value) {
+  if (value == null || value === "") return "";
   const text = String(value).trim();
-  const m = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  d.setHours(0, 0, 0, 0);
-  return d;
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso && text.length === 10) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  const d = value instanceof Date ? value : new Date(value);
+  if (!Number.isNaN(d.getTime())) return toDateKey(d);
+
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  return "";
+}
+
+function parseDateOnly(value) {
+  const key = normalizeDateKey(value);
+  if (!key) return null;
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
 }
 
 function parseItineraryToDays(itinerary) {
@@ -826,7 +940,13 @@ function isProgressFullyDone(days, completedSet) {
   return done >= total;
 }
 
-function renderCompleteTourFooter(tourId, days, completedSet, guideCompletedAt) {
+function renderCompleteTourFooter(
+  tourId,
+  days,
+  completedSet,
+  guideCompletedAt,
+  canEditProgress = true,
+) {
   if (guideCompletedAt) {
     return `
     <div class="tour-progress__footer">
@@ -834,6 +954,16 @@ function renderCompleteTourFooter(tourId, days, completedSet, guideCompletedAt) 
         <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
         Tour đã hoàn thành · Nhà cung cấp đã được thông báo
       </p>
+    </div>`;
+  }
+
+  if (!canEditProgress) {
+    return `
+    <div class="tour-progress__footer" data-complete-footer>
+      <button type="button" class="btn-complete-tour" data-complete-tour data-tour-id="${tourId}" disabled>
+        Hoàn thành tour
+      </button>
+      <p class="tour-progress__footer-hint">Chưa thể kết thúc tour khi chưa đủ điều kiện khởi hành.</p>
     </div>`;
   }
 
@@ -929,7 +1059,14 @@ function getCurrentDayLabel(days, tourStartDate) {
   return "—";
 }
 
-function renderProgressPanelContent(tour, days, completedSet, guideCompletedAt = null) {
+function renderProgressPanelContent(
+  tour,
+  days,
+  completedSet,
+  guideCompletedAt = null,
+  canEditProgress = true,
+  departBlockMessage = "",
+) {
   const total = countTotalActivities(days);
   const done = [...completedSet].filter((id) =>
     days.some((d) => d.activities.some((a) => a.id === id)),
@@ -937,6 +1074,10 @@ function renderProgressPanelContent(tour, days, completedSet, guideCompletedAt =
   const percent = total ? Math.round((done / total) * 100) : 0;
   const dateRange = `${formatDateVN(tour.startDate)} – ${formatDateVN(tour.endDate)}`;
   const tourCompleted = Boolean(guideCompletedAt);
+  const departWarn =
+    !canEditProgress && departBlockMessage
+      ? `<p class="tour-progress__depart-warn" role="status">${escapeHtml(departBlockMessage)}</p>`
+      : "";
 
   const flat = getFlatActivities(days);
   const nextIdx = getNextSequentialIndex(flat, completedSet);
@@ -967,9 +1108,10 @@ function renderProgressPanelContent(tour, days, completedSet, guideCompletedAt =
                     checked,
                     nextIdx,
                   );
-                  const isDisabled = tourCompleted || !toggleAllowed;
+                  const isDisabled =
+                    tourCompleted || !canEditProgress || !toggleAllowed;
                   const lockedClass =
-                    !tourCompleted && !toggleAllowed
+                    !tourCompleted && (!canEditProgress || !toggleAllowed)
                       ? " is-locked"
                       : "";
                   return `
@@ -1012,6 +1154,7 @@ function renderProgressPanelContent(tour, days, completedSet, guideCompletedAt =
       </div>
       <button type="button" class="tour-progress__close" data-close-progress aria-label="Đóng">&times;</button>
     </header>
+    ${departWarn}
     <div class="tour-progress__stats">
       <article class="tour-progress__stat">
         <span>Đã hoàn thành</span>
@@ -1027,11 +1170,11 @@ function renderProgressPanelContent(tour, days, completedSet, guideCompletedAt =
       </article>
     </div>
     <div class="tour-progress__scroll">${daysHtml}</div>
-    ${renderCompleteTourFooter(tour.id, days, completedSet, guideCompletedAt)}
+    ${renderCompleteTourFooter(tour.id, days, completedSet, guideCompletedAt, canEditProgress)}
   `;
 }
 
-function refreshProgressGating(panel, days, completedSet, tourCompleted) {
+function refreshProgressGating(panel, days, completedSet, tourCompleted, canEditProgress = true) {
   if (!panel) return;
   const flat = getFlatActivities(days);
   const nextIdx = getNextSequentialIndex(flat, completedSet);
@@ -1046,13 +1189,13 @@ function refreshProgressGating(panel, days, completedSet, tourCompleted) {
 
     const checked = completedSet.has(entry.id);
     const allowed = isActivityToggleAllowed(idx, checked, nextIdx);
-    cb.disabled = tourCompleted || !allowed;
+    cb.disabled = tourCompleted || !canEditProgress || !allowed;
     const row = cb.closest(".tour-progress__activity");
     if (row) {
       row.classList.toggle("is-done", checked);
       row.classList.toggle(
         "is-locked",
-        !tourCompleted && !allowed,
+        !tourCompleted && (!canEditProgress || !allowed),
       );
     }
   });
@@ -1075,7 +1218,14 @@ function syncProgressPanelStats(days, completedSet, guideCompletedAt = null) {
   if (stats[1]) stats[1].textContent = getCurrentDayLabel(days, tourStart);
   if (stats[2]) stats[2].textContent = `${percent}%`;
 
-  refreshProgressGating(panel, days, completedSet, Boolean(guideCompletedAt));
+  const canEditProgress = progressPanelCache?.canEditProgress !== false;
+  refreshProgressGating(
+    panel,
+    days,
+    completedSet,
+    Boolean(guideCompletedAt),
+    canEditProgress,
+  );
 
   if (guideCompletedAt != null && tourId != null) {
     const footer = panel.querySelector("[data-complete-footer]");
@@ -1085,13 +1235,14 @@ function syncProgressPanelStats(days, completedSet, guideCompletedAt = null) {
         days,
         completedSet,
         guideCompletedAt,
+        canEditProgress,
       );
     }
   } else if (tourId != null) {
     const footer = panel.querySelector("[data-complete-footer]");
     const fullyDone = isProgressFullyDone(days, completedSet);
     const btn = footer?.querySelector("[data-complete-tour]");
-    if (btn) btn.disabled = !fullyDone;
+    if (btn) btn.disabled = !canEditProgress || !fullyDone;
   }
 }
 
@@ -1100,7 +1251,9 @@ function closeProgressPanel() {
   progressPanelCache = null;
   const workspace = document.getElementById("tourWorkspace");
   const panel = document.getElementById("tourProgressPanel");
-  if (workspace) workspace.classList.remove("has-progress");
+  if (workspace && activeContactTourId == null) {
+    workspace.classList.remove("has-progress");
+  }
   if (panel) {
     panel.hidden = true;
     panel.setAttribute("aria-hidden", "true");
@@ -1114,6 +1267,36 @@ function closeProgressPanel() {
     .forEach((card) => card.classList.remove("tour-card--progress-active"));
 }
 
+function tourCanOperate(tour) {
+  if (!tour) return false;
+  if (tour.canOperate === false) return false;
+  const dep = tour.departureEligibility;
+  if (dep && dep.can_depart === false) return false;
+  return true;
+}
+
+/** Trùng backend: chỉ chặn sửa tiến độ khi đang trong khung ngày tour mà chưa đủ điều kiện khởi hành. */
+function isTourInOperationalWindow(tour) {
+  const todayYmd = normalizeDateKey(new Date());
+  const start = normalizeDateKey(tour?.startDate);
+  const end = normalizeDateKey(tour?.endDate || tour?.startDate);
+  if (!start || !todayYmd) return false;
+  return todayYmd >= start && todayYmd <= end;
+}
+
+function tourCanEditProgress(tour) {
+  if (!tour) return false;
+  if (!isTourInOperationalWindow(tour)) return true;
+  return tourCanOperate(tour);
+}
+
+function tourDepartureBlockMessage(tour) {
+  return (
+    tour?.departureEligibility?.message ||
+    "Tour chưa đủ điều kiện khởi hành (cần trên 50% sức chứa và có hướng dẫn viên)."
+  );
+}
+
 async function openProgressPanel(tourId) {
   const tour = currentTours.find((t) => Number(t.id) === Number(tourId));
   const workspace = document.getElementById("tourWorkspace");
@@ -1123,6 +1306,10 @@ async function openProgressPanel(tourId) {
   if (activeProgressTourId === Number(tourId)) {
     closeProgressPanel();
     return;
+  }
+
+  if (activeContactTourId != null) {
+    closeContactPanel();
   }
 
   activeProgressTourId = Number(tourId);
@@ -1153,13 +1340,18 @@ async function openProgressPanel(tourId) {
       name: tour.name,
       startDate: tour.startDate || detail.start_date,
       endDate: tour.endDate || detail.end_date,
+      departureEligibility: tour.departureEligibility,
+      canOperate: tour.canOperate,
     };
-    progressPanelCache = { tourView, days, guideCompletedAt };
+    const canEditProgress = tourCanEditProgress(tour);
+    progressPanelCache = { tourView, days, guideCompletedAt, canEditProgress };
     panel.innerHTML = renderProgressPanelContent(
       tourView,
       days,
       completedSet,
       guideCompletedAt,
+      canEditProgress,
+      canEditProgress ? "" : tourDepartureBlockMessage(tour),
     );
   } catch (error) {
     progressPanelCache = null;
@@ -1181,7 +1373,7 @@ function refreshProgressPanelIfOpen() {
 
 async function completeGuideTour(tourId) {
   if (
-    !confirm(
+    !(await showAppConfirm(
       "Xác nhận hoàn thành tour?\n\nNhà cung cấp sẽ nhận thông báo và các booking liên quan sẽ được cập nhật trạng thái hoàn thành.",
     )
   ) {
@@ -1264,6 +1456,12 @@ function renderTours(keyword = "") {
       (tour) => {
         const focused =
           urlTourHighlightId != null && Number(tour.id) === urlTourHighlightId;
+        const canOperate = tourCanOperate(tour);
+        const booked = Number(tour.bookedParticipants || 0);
+        const cap = Number(tour.customers || 0);
+        const departHint = canOperate
+          ? ""
+          : `<p class="tour-depart-block">${escapeHtml(tourDepartureBlockMessage(tour))}</p>`;
         return `
         <div class="tour-card${focused ? " tour-card--focused" : ""}${activeProgressTourId === Number(tour.id) ? " tour-card--progress-active" : ""}" data-tour-id="${tour.id}">
           <div class="tour-card-top">
@@ -1274,7 +1472,7 @@ function renderTours(keyword = "") {
           <div class="tour-info-list">
             <div class="tour-info-item">
               <span class="tour-info-icon">👥</span>
-              <span><strong>${tour.customers}</strong> khách hàng</span>
+              <span><strong>${booked}/${cap}</strong> khách (đã đặt/tối đa)</span>
             </div>
 
             <div class="tour-info-item">
@@ -1303,13 +1501,11 @@ function renderTours(keyword = "") {
             <button type="button" class="btn-contact" data-action="contact" data-id="${tour.id}" data-tour-name="${String(tour.name).replace(/"/g, "&quot;")}">
               Liên hệ khách
             </button>
-            <button type="button" class="btn-contact btn-contact--provider" data-action="contact-provider" data-id="${tour.id}" data-tour-name="${String(tour.name).replace(/"/g, "&quot;")}">
-              Liên hệ NCC
-            </button>
             <button type="button" class="btn-absence" data-action="report-absence" data-id="${tour.id}" data-tour-name="${String(tour.name).replace(/"/g, "&quot;")}">
               Báo bận khẩn cấp
             </button>
           </div>
+          ${departHint}
           <p class="tour-note">
             <strong>Lưu ý:</strong> hướng dẫn viên vui lòng tích vào ô mốc giờ khi hoàn thành thành để cập nhật tiến độ toàn bộ tour
           </p>
@@ -1363,8 +1559,18 @@ function bindEvents() {
   }
 
   document.addEventListener("click", function (event) {
-    if (event.target.closest("[data-close-provider]")) {
-      closeProviderContactModal();
+    if (event.target.closest("[data-close-consent]")) {
+      closeAbsenceConsentModal();
+      return;
+    }
+
+    const consentAgree = event.target.closest("[data-role='consent-agree']");
+    if (consentAgree) {
+      const consentModal = document.getElementById("absenceConsentModal");
+      const tourId = consentModal?.dataset.tourId;
+      const tourName = consentModal?.dataset.tourName || "";
+      closeAbsenceConsentModal();
+      if (tourId) openAbsenceRequestModal(tourId, tourName);
       return;
     }
 
@@ -1382,6 +1588,11 @@ function bindEvents() {
       closeProgressPanel();
       const keyword = document.getElementById("tourSearchInput")?.value || "";
       renderTours(keyword);
+      return;
+    }
+
+    if (event.target.closest("[data-close-contact]")) {
+      closeContactPanel();
       return;
     }
 
@@ -1405,23 +1616,13 @@ function bindEvents() {
     }
 
     if (action === "contact" && id) {
-      const tourName = target.getAttribute("data-tour-name") || "";
-      const q = new URLSearchParams({
-        tourId: String(id),
-        tourName: tourName
-      });
-      window.location.href = `khachhang.html?${q.toString()}`;
-      return;
-    }
-
-    if (action === "contact-provider" && id) {
-      openProviderContactModal(id);
+      openContactPanel(id);
       return;
     }
 
     if (action === "report-absence" && id) {
       const tourName = target.getAttribute("data-tour-name") || "";
-      openAbsenceRequestModal(id, tourName);
+      openAbsenceConsentModal(id, tourName);
       return;
     }
   });
@@ -1440,6 +1641,13 @@ function bindEvents() {
     const tourId = checkbox.getAttribute("data-tour-id");
     const activityId = checkbox.getAttribute("data-activity-id");
     if (!tourId || !activityId) return;
+
+    const tour = currentTours.find((t) => Number(t.id) === Number(tourId));
+    if (tour && !tourCanEditProgress(tour)) {
+      checkbox.checked = !checkbox.checked;
+      alert(tourDepartureBlockMessage(tour));
+      return;
+    }
 
     const wasChecked = checkbox.checked;
     const previousSet = getProgressSetForTour(tourId);
@@ -1506,9 +1714,8 @@ function bindEvents() {
       closeAbsenceModal();
       return;
     }
-    const providerModal = document.getElementById("providerContactModal");
-    if (providerModal && !providerModal.hidden) {
-      closeProviderContactModal();
+    if (activeContactTourId) {
+      closeContactPanel();
       return;
     }
     if (activeProgressTourId) {

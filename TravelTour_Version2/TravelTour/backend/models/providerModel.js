@@ -3,6 +3,9 @@ import { createGuideTourAssignedNotification } from "./guideNotificationsModel.j
 import { logTourGuideHistory } from "./tourGuideHistoryModel.js";
 import { notifyTourCustomers } from "./customerNotificationsModel.js";
 import { getProviderReportOverview } from "./providerReportsModel.js";
+import { computeAbsenceUrgency } from "../utils/absenceUrgency.js";
+import { assertGuideCanReportOrReceiveAbsence } from "./guideAbsencePolicy.js";
+import { buildTourDeparturePayload } from "../utils/tourDepartureRules.js";
 
 function safeJsonParse(value, fallback = []) {
   if (!value) return fallback;
@@ -26,7 +29,7 @@ function createSlug(text = "") {
 }
 
 /** Số khách đã giữ chỗ (theo booking còn hiệu lực). */
-const BOOKED_PARTICIPANTS_JOIN = `
+export const BOOKED_PARTICIPANTS_JOIN = `
     LEFT JOIN (
       SELECT
         tour_id,
@@ -961,7 +964,7 @@ function buildScheduleConflictMessage(
   return `Tour "${newName}" phải bắt đầu từ ${formatDateVNFromYmd(minNewStart)} trở đi (sau tour "${otherName}" kết thúc ${formatDateVNFromYmd(e2)}, cần ít nhất 1 ngày nghỉ).`;
 }
 
-async function getAssignedToursByGuideMap(providerId) {
+async function getAssignedToursByGuideMap() {
   const statusPlaceholders = GUIDE_ACTIVE_TOUR_STATUSES.map(() => "?").join(", ");
   const [rows] = await db.query(
     `
@@ -972,12 +975,11 @@ async function getAssignedToursByGuideMap(providerId) {
       DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date,
       DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date
     FROM tours t
-    WHERE t.provider_id = ?
-      AND t.guide_id IS NOT NULL
+    WHERE t.guide_id IS NOT NULL
       AND t.status IN (${statusPlaceholders})
       AND t.guide_completed_at IS NULL
     `,
-    [providerId, ...GUIDE_ACTIVE_TOUR_STATUSES],
+    [...GUIDE_ACTIVE_TOUR_STATUSES],
   );
 
   const map = new Map();
@@ -1030,12 +1032,11 @@ async function assertGuideTourScheduleNoConflict(providerId, tourId, guideId) {
       DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date
     FROM tours
     WHERE guide_id = ?
-      AND provider_id = ?
       AND id <> ?
       AND status IN (${statusPlaceholders})
       AND guide_completed_at IS NULL
     `,
-    [guideId, providerId, tourId, ...GUIDE_ACTIVE_TOUR_STATUSES],
+    [guideId, tourId, ...GUIDE_ACTIVE_TOUR_STATUSES],
   );
 
   for (const other of otherRows) {
@@ -1083,7 +1084,7 @@ function computeScheduleMatchFromFreeDates(freeDates, tourDays) {
   };
 }
 
-export async function getGuides(providerId) {
+export async function getGuides() {
   const statusPlaceholders = GUIDE_ACTIVE_TOUR_STATUSES.map(() => "?").join(", ");
   const [rows] = await db.query(
     `
@@ -1092,10 +1093,23 @@ export async function getGuides(providerId) {
       u.full_name,
       u.avatar_url,
       (
+        SELECT COUNT(*)
+        FROM reviews r
+        INNER JOIN tours t ON t.id = r.tour_id
+        WHERE t.guide_id = g.id
+          AND r.status = 'approved'
+      ) AS _tour_review_count_for_guide,
+      (
+        SELECT COALESCE(AVG(r.rating), 0)
+        FROM reviews r
+        INNER JOIN tours t ON t.id = r.tour_id
+        WHERE t.guide_id = g.id
+          AND r.status = 'approved'
+      ) AS _tour_review_avg_for_guide,
+      (
         SELECT t.id
         FROM tours t
         WHERE t.guide_id = g.id
-          AND t.provider_id = g.provider_id
           AND t.status IN (${statusPlaceholders})
           AND t.guide_completed_at IS NULL
         ORDER BY t.start_date ASC, t.id DESC
@@ -1105,7 +1119,6 @@ export async function getGuides(providerId) {
         SELECT t.title
         FROM tours t
         WHERE t.guide_id = g.id
-          AND t.provider_id = g.provider_id
           AND t.status IN (${statusPlaceholders})
           AND t.guide_completed_at IS NULL
         ORDER BY t.start_date ASC, t.id DESC
@@ -1113,15 +1126,36 @@ export async function getGuides(providerId) {
       ) AS active_tour_title
     FROM guides g
     JOIN users u ON g.user_id = u.id
-    WHERE g.provider_id = ?
+    WHERE g.status = 'active'
+      AND u.is_active = 1
+    ORDER BY u.full_name ASC, g.id ASC
     `,
-    [...GUIDE_ACTIVE_TOUR_STATUSES, ...GUIDE_ACTIVE_TOUR_STATUSES, providerId]
+    [...GUIDE_ACTIVE_TOUR_STATUSES, ...GUIDE_ACTIVE_TOUR_STATUSES]
   );
-  return rows;
+
+  /** Điểm trên bảng guides thường không được cập nhật khi có reviews tour — gộp từ reviews đã duyệt theo tour HDV đang được gán. */
+  return (rows || []).map((row) => {
+    const derivedCount = Number(row._tour_review_count_for_guide || 0);
+    const derivedAvg = Number(row._tour_review_avg_for_guide || 0);
+    const {
+      _tour_review_count_for_guide,
+      _tour_review_avg_for_guide,
+      ...rest
+    } = row;
+
+    if (derivedCount > 0) {
+      return {
+        ...rest,
+        rating_count: derivedCount,
+        rating_avg: Math.round(derivedAvg * 10) / 10,
+      };
+    }
+    return rest;
+  });
 }
 
 export async function getGuidesForAssignment(providerId, tourId = null) {
-  const guides = await getGuides(providerId);
+  const guides = await getGuides();
   const tourIdNum = tourId != null ? Number(tourId) : null;
 
   const [allAvailRowsBase] = await db.query(
@@ -1129,9 +1163,8 @@ export async function getGuidesForAssignment(providerId, tourId = null) {
     SELECT ga.guide_id, DATE_FORMAT(ga.avail_date, '%Y-%m-%d') AS avail_date
     FROM guide_availability ga
     INNER JOIN guides g ON g.id = ga.guide_id
-    WHERE g.provider_id = ?
+    WHERE g.status = 'active'
     `,
-    [providerId],
   );
   const allFreeByGuideBase = new Map();
   for (const row of allAvailRowsBase) {
@@ -1159,9 +1192,8 @@ export async function getGuidesForAssignment(providerId, tourId = null) {
         DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date
       FROM tours
       WHERE id IN (?)
-        AND provider_id = ?
       `,
-      [activeTourIds, providerId],
+      [activeTourIds],
     );
     for (const row of activeTourRows) {
       activeTourMap.set(Number(row.id), row);
@@ -1192,7 +1224,7 @@ export async function getGuidesForAssignment(providerId, tourId = null) {
     }
   }
 
-  const assignedByGuide = await getAssignedToursByGuideMap(providerId);
+  const assignedByGuide = await getAssignedToursByGuideMap();
 
   return guides.map((guide) => {
     const gid = Number(guide.id);
@@ -1388,15 +1420,17 @@ export async function assignGuideToTour(providerId, tourId, guideId, options = {
     SELECT id
     FROM guides
     WHERE id = ?
-      AND provider_id = ?
+      AND status = 'active'
     LIMIT 1
     `,
-    [guideId, providerId]
+    [guideId]
   );
 
   if (!guideRows.length) {
-    throw new Error("Không tìm thấy hướng dẫn viên");
+    throw new Error("Không tìm thấy hướng dẫn viên hoặc HDV không còn hoạt động");
   }
+
+  await assertGuideCanReportOrReceiveAbsence(guideId);
 
   await assertGuideTourScheduleNoConflict(providerId, tourId, guideId);
   await assertGuideHasFullAvailabilityForTour(providerId, tourId, guideId);
@@ -1535,6 +1569,8 @@ export async function getProviderProfile(providerId) {
       p.address,
       p.website_url,
       p.license_number,
+      p.contract_file_url,
+      p.certificate_file_url,
       p.tax_code,
       p.phone,
       p.hotline,
@@ -1603,10 +1639,16 @@ export async function getProviderProfile(providerId) {
     accountEmail: provider.account_email || provider.email || "",
     certificates: [
       {
-        name: "Giấy phép kinh doanh",
-        status: provider.license_number ? "Đã xác minh" : "Chưa cập nhật"
-      }
-    ]
+        name: "Hợp đồng",
+        status: provider.contract_file_url ? "Đã xác minh" : "Chưa cập nhật",
+        fileUrl: provider.contract_file_url || "",
+      },
+      {
+        name: "Giấy chứng nhận",
+        status: provider.certificate_file_url ? "Đã xác minh" : "Chưa cập nhật",
+        fileUrl: provider.certificate_file_url || "",
+      },
+    ],
   };
 }
 
@@ -2013,9 +2055,9 @@ export async function getProviderNotifications(providerId, limit = 12) {
       `
       SELECT
         r.id,
-        r.urgency,
         r.requested_at,
         t.title AS tour_title,
+        t.start_date AS tour_start_date,
         u.full_name AS guide_name
       FROM guide_absence_requests r
       JOIN tours t ON t.id = r.tour_id
@@ -2023,18 +2065,22 @@ export async function getProviderNotifications(providerId, limit = 12) {
       LEFT JOIN users u ON u.id = g.user_id
       WHERE r.provider_id = ?
         AND r.status = 'pending'
-      ORDER BY FIELD(r.urgency, 'urgent','medium','low'), r.requested_at DESC
+      ORDER BY
+        CASE
+          WHEN t.start_date IS NULL THEN 2
+          WHEN TIMESTAMPDIFF(HOUR, NOW(), t.start_date) <= 48 THEN 0
+          WHEN TIMESTAMPDIFF(HOUR, NOW(), t.start_date) <= 168 THEN 1
+          ELSE 2
+        END,
+        t.start_date ASC,
+        r.requested_at DESC
       LIMIT 12
       `,
       [providerId],
     );
     for (const row of absenceRows || []) {
-      const urgencyText =
-        row.urgency === "urgent"
-          ? "Khẩn cấp"
-          : row.urgency === "medium"
-            ? "Cần xử lý sớm"
-            : "Mới";
+      const urgency = computeAbsenceUrgency(row.tour_start_date);
+      const urgencyText = "Báo bận khẩn cấp";
       notifications.push({
         id: `absence-${row.id}`,
         type: "guide_absence_request",
@@ -2042,7 +2088,7 @@ export async function getProviderNotifications(providerId, limit = 12) {
         subtitle: `${row.guide_name || "Hướng dẫn viên"} · ${row.tour_title || "Tour"}`,
         date: toIsoDate(row.requested_at),
         href: "guide_absences.html",
-        tone: row.urgency === "urgent" ? "red" : "orange",
+        tone: urgency === "urgent" ? "red" : "orange",
       });
     }
   } catch (absenceErr) {
@@ -2325,6 +2371,7 @@ export async function getPublicTourById(tourId) {
       t.terms_conditions,
       t.other_notes,
       t.status,
+      t.guide_id,
       t.created_at,
       p.company_name AS provider_name,
       COALESCE(bp.booked_participants, 0) AS booked_participants
@@ -2342,6 +2389,7 @@ export async function getPublicTourById(tourId) {
 
   const tour = rows[0];
   const pricing = resolvePublicTourPricing(tour);
+  const departure_eligibility = buildTourDeparturePayload(tour);
 
   const [imageRows] = await db.query(
     `
@@ -2357,6 +2405,7 @@ export async function getPublicTourById(tourId) {
     ...tour,
     ...pricing,
     ...attachPublicTourCapacity(tour),
+    departure_eligibility,
     cancel_policy: tour.cancel_policy || "",
     terms_conditions: tour.terms_conditions || "",
     other_notes: tour.other_notes || "",

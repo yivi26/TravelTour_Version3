@@ -1,6 +1,7 @@
 import db from "../config/db.js";
 import { toNumber } from "../utils/modelHelpers.js";
 import { getAllSettings } from "./settingsModel.js";
+import { refreshGuideRatingAggregate } from "./guideModel.js";
 
 const ELIGIBLE_BOOKING_STATUSES = ["completed"];
 
@@ -77,8 +78,22 @@ export async function getCustomerTourReviewContext(userId, tourId, bookingId = n
       g.specialty,
       g.languages,
       g.experience_years,
-      g.rating_avg,
-      g.rating_count
+      (
+        SELECT COUNT(*)
+        FROM reviews r2
+        INNER JOIN tours t2 ON t2.id = r2.tour_id
+        WHERE t2.guide_id = g.id
+          AND r2.guide_rating IS NOT NULL
+          AND r2.guide_rating > 0
+      ) AS rating_count,
+      (
+        SELECT COALESCE(AVG(r2.guide_rating), 0)
+        FROM reviews r2
+        INNER JOIN tours t2 ON t2.id = r2.tour_id
+        WHERE t2.guide_id = g.id
+          AND r2.guide_rating IS NOT NULL
+          AND r2.guide_rating > 0
+      ) AS rating_avg
     FROM tours t
     INNER JOIN guides g ON g.id = t.guide_id
     INNER JOIN users u ON u.id = g.user_id
@@ -115,7 +130,10 @@ export async function getCustomerTourReviewContext(userId, tourId, bookingId = n
           specialty: guideRow.specialty || "",
           languages: guideRow.languages || "",
           experienceYears: toNumber(guideRow.experience_years),
-          ratingAvg: Number(guideRow.rating_avg || 0),
+          ratingAvg:
+            toNumber(guideRow.rating_count) > 0
+              ? Math.round(Number(guideRow.rating_avg || 0) * 10) / 10
+              : 0,
           ratingCount: toNumber(guideRow.rating_count),
         }
       : null,
@@ -216,6 +234,19 @@ export async function submitGuideReview({
     [stars, photosPayload, review.id]
   );
 
+  const [[tourGuide]] = await db.query(
+    `
+    SELECT t.guide_id
+    FROM tours t
+    WHERE t.id = ?
+    LIMIT 1
+    `,
+    [tid]
+  );
+  if (tourGuide?.guide_id) {
+    await refreshGuideRatingAggregate(tourGuide.guide_id);
+  }
+
   return { id: toNumber(review.id), guideRating: stars, bookingId: bid };
 }
 
@@ -229,7 +260,30 @@ function formatDdMmYyyy(value) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
-export async function getTourReviewSummaryAndList(tourId, { limit = 50 } = {}) {
+function removeVietnameseDiacritics(str) {
+  return String(str || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+}
+
+/** Ví dụ: "Viết Nhật" → "Vie******" (3 ký tự đầu sau khi bỏ dấu, ghép tên). */
+export function maskReviewerDisplayName(fullName) {
+  const raw = String(fullName || "").trim();
+  if (!raw) return "Kha******";
+
+  const folded = removeVietnameseDiacritics(raw).replace(/\s+/g, "");
+  const alnum = folded.replace(/[^a-zA-Z0-9]/g, "");
+  const base = (alnum || folded || "Kha").slice(0, 3);
+  if (!base) return "Kha******";
+
+  const first = base.charAt(0).toUpperCase();
+  const rest = base.slice(1, 3).toLowerCase();
+  return `${first}${rest}******`;
+}
+
+export async function getTourReviewSummaryAndList(tourId, { limit = 50, viewingUserId = null } = {}) {
   const tid = toNumber(tourId, 0);
   if (!tid) {
     const err = new Error("ID tour không hợp lệ");
@@ -276,10 +330,12 @@ export async function getTourReviewSummaryAndList(tourId, { limit = 50 } = {}) {
   });
 
   const safeLimit = Math.min(100, Math.max(1, toNumber(limit, 50)));
+  const viewerId = viewingUserId != null ? toNumber(viewingUserId, 0) : 0;
   const [reviewRows] = await db.query(
     `
     SELECT
       r.id,
+      r.user_id,
       r.rating,
       r.comment,
       r.created_at,
@@ -294,14 +350,7 @@ export async function getTourReviewSummaryAndList(tourId, { limit = 50 } = {}) {
     [tid, safeLimit]
   );
 
-  const reviews = (reviewRows || []).map((r) => ({
-    id: toNumber(r.id),
-    rating: toNumber(r.rating),
-    comment: r.comment || "",
-    dateText: formatDdMmYyyy(r.created_at),
-    userName: r.full_name || "Khách hàng",
-    userAvatarUrl: r.avatar_url || "",
-  }));
+  const reviews = (reviewRows || []).map((r) => mapApprovedTourReviewRow(r, viewerId));
 
   return {
     tourId: tid,
@@ -311,6 +360,280 @@ export async function getTourReviewSummaryAndList(tourId, { limit = 50 } = {}) {
       distribution,
     },
     reviews,
+  };
+}
+
+/** Đánh giá HDV (guide_rating) trên các review đã duyệt của tour. */
+export async function getTourGuideReviewSummaryAndList(tourId, { limit = 50, viewingUserId = null } = {}) {
+  const tid = toNumber(tourId, 0);
+  if (!tid) {
+    const err = new Error("ID tour không hợp lệ");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const [[tourGuide]] = await db.query(
+    `
+    SELECT
+      t.guide_id,
+      u.full_name AS guide_name,
+      u.avatar_url AS guide_avatar_url
+    FROM tours t
+    LEFT JOIN guides g ON g.id = t.guide_id
+    LEFT JOIN users u ON u.id = g.user_id
+    WHERE t.id = ?
+    LIMIT 1
+    `,
+    [tid]
+  );
+
+  const guide = tourGuide?.guide_id
+    ? {
+        id: toNumber(tourGuide.guide_id),
+        name: tourGuide.guide_name || "Hướng dẫn viên",
+        avatarUrl: tourGuide.guide_avatar_url || "",
+      }
+    : null;
+
+  const [[agg]] = await db.query(
+    `
+    SELECT
+      COUNT(*) AS total,
+      COALESCE(AVG(guide_rating), 0) AS avg_rating
+    FROM reviews
+    WHERE tour_id = ?
+      AND status = 'approved'
+      AND guide_rating IS NOT NULL
+      AND guide_rating > 0
+    `,
+    [tid]
+  );
+
+  const total = toNumber(agg?.total);
+  const avgRating = total > 0 ? Math.round(Number(agg.avg_rating) * 10) / 10 : 0;
+
+  const [distRows] = await db.query(
+    `
+    SELECT guide_rating AS rating, COUNT(*) AS cnt
+    FROM reviews
+    WHERE tour_id = ?
+      AND status = 'approved'
+      AND guide_rating IS NOT NULL
+      AND guide_rating > 0
+    GROUP BY guide_rating
+    `,
+    [tid]
+  );
+
+  const distMap = Object.fromEntries((distRows || []).map((r) => [toNumber(r.rating), toNumber(r.cnt)]));
+  const distribution = [5, 4, 3, 2, 1].map((stars) => {
+    const count = distMap[stars] || 0;
+    const pct = total > 0 ? Math.round((count / total) * 1000) / 10 : 0;
+    return { stars, count, percent: pct };
+  });
+
+  const safeLimit = Math.min(100, Math.max(1, toNumber(limit, 50)));
+  const viewerId = viewingUserId != null ? toNumber(viewingUserId, 0) : 0;
+  const [reviewRows] = await db.query(
+    `
+    SELECT
+      r.id,
+      r.user_id,
+      r.guide_rating,
+      r.photos,
+      r.created_at,
+      u.full_name,
+      u.avatar_url
+    FROM reviews r
+    JOIN users u ON u.id = r.user_id
+    WHERE r.tour_id = ?
+      AND r.status = 'approved'
+      AND r.guide_rating IS NOT NULL
+      AND r.guide_rating > 0
+    ORDER BY r.created_at DESC, r.id DESC
+    LIMIT ?
+    `,
+    [tid, safeLimit]
+  );
+
+  const reviews = (reviewRows || []).map((r) => mapApprovedGuideReviewRow(r, viewerId));
+
+  return {
+    tourId: tid,
+    guide,
+    summary: {
+      average: avgRating,
+      total,
+      distribution,
+    },
+    reviews,
+  };
+}
+
+function mapApprovedTourReviewRow(r, viewerId) {
+  const authorId = toNumber(r.user_id);
+  const fullName = r.full_name || "Khách hàng";
+  const isOwn = viewerId > 0 && authorId === viewerId;
+  return {
+    id: toNumber(r.id),
+    rating: toNumber(r.rating),
+    comment: r.comment || "",
+    dateText: formatDdMmYyyy(r.created_at),
+    userName: isOwn ? fullName : maskReviewerDisplayName(fullName),
+    userAvatarUrl: isOwn ? r.avatar_url || "" : "",
+    isOwnReview: isOwn,
+  };
+}
+
+function mapApprovedGuideReviewRow(r, viewerId) {
+  const authorId = toNumber(r.user_id);
+  const fullName = r.full_name || "Khách hàng";
+  const isOwn = viewerId > 0 && authorId === viewerId;
+  const meta = parseGuidePhotosMeta(r.photos);
+  return {
+    id: toNumber(r.id),
+    rating: toNumber(r.guide_rating),
+    comment: meta.guideComment || "",
+    tags: meta.guideTags,
+    dateText: formatDdMmYyyy(r.created_at),
+    userName: isOwn ? fullName : maskReviewerDisplayName(fullName),
+    userAvatarUrl: isOwn ? r.avatar_url || "" : "",
+    isOwnReview: isOwn,
+  };
+}
+
+/** Phân trang đánh giá tour (đã duyệt). */
+export async function getPaginatedTourReviews(tourId, { page = 1, pageSize = 10, viewingUserId = null } = {}) {
+  const tid = toNumber(tourId, 0);
+  if (!tid) {
+    const err = new Error("ID tour không hợp lệ");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const safePage = Math.max(1, toNumber(page, 1));
+  const safePageSize = Math.min(20, Math.max(5, toNumber(pageSize, 10)));
+  const offset = (safePage - 1) * safePageSize;
+  const viewerId = viewingUserId != null ? toNumber(viewingUserId, 0) : 0;
+
+  const [[countRow]] = await db.query(
+    `SELECT COUNT(*) AS total FROM reviews WHERE tour_id = ? AND status = 'approved'`,
+    [tid]
+  );
+  const total = toNumber(countRow?.total);
+  const totalPages = total > 0 ? Math.ceil(total / safePageSize) : 0;
+
+  const [reviewRows] = await db.query(
+    `
+    SELECT
+      r.id,
+      r.user_id,
+      r.rating,
+      r.comment,
+      r.created_at,
+      u.full_name,
+      u.avatar_url
+    FROM reviews r
+    JOIN users u ON u.id = r.user_id
+    WHERE r.tour_id = ? AND r.status = 'approved'
+    ORDER BY r.created_at DESC, r.id DESC
+    LIMIT ? OFFSET ?
+    `,
+    [tid, safePageSize, offset]
+  );
+
+  return {
+    tourId: tid,
+    reviews: (reviewRows || []).map((r) => mapApprovedTourReviewRow(r, viewerId)),
+    pagination: {
+      page: safePage,
+      pageSize: safePageSize,
+      total,
+      totalPages,
+    },
+  };
+}
+
+/** Phân trang đánh giá HDV (đã duyệt, có guide_rating). */
+export async function getPaginatedGuideReviews(tourId, { page = 1, pageSize = 10, viewingUserId = null } = {}) {
+  const tid = toNumber(tourId, 0);
+  if (!tid) {
+    const err = new Error("ID tour không hợp lệ");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const safePage = Math.max(1, toNumber(page, 1));
+  const safePageSize = Math.min(20, Math.max(5, toNumber(pageSize, 10)));
+  const offset = (safePage - 1) * safePageSize;
+  const viewerId = viewingUserId != null ? toNumber(viewingUserId, 0) : 0;
+
+  const [[tourGuide]] = await db.query(
+    `
+    SELECT t.guide_id, u.full_name AS guide_name, u.avatar_url AS guide_avatar_url
+    FROM tours t
+    LEFT JOIN guides g ON g.id = t.guide_id
+    LEFT JOIN users u ON u.id = g.user_id
+    WHERE t.id = ?
+    LIMIT 1
+    `,
+    [tid]
+  );
+
+  const guide = tourGuide?.guide_id
+    ? {
+        id: toNumber(tourGuide.guide_id),
+        name: tourGuide.guide_name || "Hướng dẫn viên",
+        avatarUrl: tourGuide.guide_avatar_url || "",
+      }
+    : null;
+
+  const [[countRow]] = await db.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM reviews
+    WHERE tour_id = ?
+      AND status = 'approved'
+      AND guide_rating IS NOT NULL
+      AND guide_rating > 0
+    `,
+    [tid]
+  );
+  const total = toNumber(countRow?.total);
+  const totalPages = total > 0 ? Math.ceil(total / safePageSize) : 0;
+
+  const [reviewRows] = await db.query(
+    `
+    SELECT
+      r.id,
+      r.user_id,
+      r.guide_rating,
+      r.photos,
+      r.created_at,
+      u.full_name,
+      u.avatar_url
+    FROM reviews r
+    JOIN users u ON u.id = r.user_id
+    WHERE r.tour_id = ?
+      AND r.status = 'approved'
+      AND r.guide_rating IS NOT NULL
+      AND r.guide_rating > 0
+    ORDER BY r.created_at DESC, r.id DESC
+    LIMIT ? OFFSET ?
+    `,
+    [tid, safePageSize, offset]
+  );
+
+  return {
+    tourId: tid,
+    guide,
+    reviews: (reviewRows || []).map((r) => mapApprovedGuideReviewRow(r, viewerId)),
+    pagination: {
+      page: safePage,
+      pageSize: safePageSize,
+      total,
+      totalPages,
+    },
   };
 }
 

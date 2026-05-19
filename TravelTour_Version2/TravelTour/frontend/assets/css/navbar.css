@@ -1,4 +1,6 @@
 /* Shared public navbar (copied from index.html style.css) */
+@import url("./customer/customer-navbar-notifications.css");
+
 :root {
   --primary: #1dbf73;
   --primary-dark: #169c5e;

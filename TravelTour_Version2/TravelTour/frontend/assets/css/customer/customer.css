@@ -569,23 +569,26 @@ button {
 }
 .toast {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: 50%;
+  left: 50%;
   background: #22c55e;
   color: #fff;
-  padding: 14px 20px;
+  padding: 16px 22px;
   border-radius: 12px;
   font-size: 15px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  font-weight: 600;
+  text-align: center;
+  max-width: min(420px, calc(100vw - 32px));
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
   z-index: 9999;
   opacity: 0;
-  transform: translateY(-20px);
+  transform: translate(-50%, calc(-50% - 10px));
   transition: all 0.3s ease;
 }
 
 .toast.show {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate(-50%, -50%);
 }
 
 .toast.error {

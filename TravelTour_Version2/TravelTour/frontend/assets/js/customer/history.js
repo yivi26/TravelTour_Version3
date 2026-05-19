@@ -27,7 +27,7 @@ function getCancellationPolicy(booking) {
       feePercent: 0,
       feeAmount: 0,
       applyText:
-        "Áp dụng cho booking này: Hủy trong vòng 60 phút — bạn không mất phí hủy.",
+        "Áp dụng cho booking này: Hủy trong vòng 60 phút kể từ lúc đặt tour — không mất phí.",
     };
   }
 
@@ -38,7 +38,7 @@ function getCancellationPolicy(booking) {
       tier: "partial",
       feePercent: 15,
       feeAmount,
-      applyText: `Áp dụng cho booking này: Phí hủy 15% = ${formatCurrency(feeAmount)} (trên tổng ${formatCurrency(totalPrice)}).`,
+      applyText: `Áp dụng cho booking này: Hủy từ sau 60 phút đến 24 giờ kể từ lúc đặt — mất 15% trên tổng giá trị tour (${formatCurrency(feeAmount)} / ${formatCurrency(totalPrice)}).`,
     };
   }
 
@@ -47,8 +47,8 @@ function getCancellationPolicy(booking) {
     tier: "blocked",
     feePercent: 0,
     feeAmount: 0,
-    applyText:
-      "Áp dụng cho booking này: Đã quá 24 giờ kể từ lúc đặt tour — không thể hủy theo quy định.",
+      applyText:
+        "Áp dụng cho booking này: Đã quá 24 giờ kể từ lúc đặt tour — không hủy được.",
   };
 }
 
@@ -467,9 +467,9 @@ function buildCancelBlockedMessage(booking) {
     "Không thể hủy tour này.",
     "",
     "Quy định hủy tour:",
-    "• Trong 60 phút kể từ lúc đặt: không mất phí.",
-    "• Từ sau 60 phút đến 24 giờ: mất 15% trên tổng giá trị tour.",
-    "• Sau 24 giờ kể từ lúc đặt: không được hủy.",
+    "• Hủy trong vòng 60 phút kể từ lúc đặt tour thì không mất phí.",
+    "• Hủy từ sau 60 phút đến 24 giờ kể từ lúc đặt thì mất 15% trên tổng giá trị của tour.",
+    "• Từ sau 24 giờ kể từ lúc đặt tour thì không hủy được.",
     "",
     policy.applyText,
   ].join("\n");

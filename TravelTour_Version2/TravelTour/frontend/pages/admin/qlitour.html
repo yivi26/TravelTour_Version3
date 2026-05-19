@@ -6,6 +6,10 @@
     <title>TravelTour - Quản lý tour</title>
     <link rel="stylesheet" href="../../assets/css/admin/admin-base.css" />
     <link rel="stylesheet" href="../../assets/css/admin/qlitour.css" />
+  
+    <link rel="stylesheet" href="/assets/css/common/app-toast.css" />
+    <script src="/assets/js/common/app-toast.js"></script>
+
   </head>
   <body>
     <div class="dashboard">
@@ -562,7 +566,7 @@
               } else if (action === "delete") {
                 const id = btn.getAttribute("data-tour-id");
                 if (!id) return;
-                const ok = confirm("Bạn chắc chắn muốn xóa tour này?");
+                const ok = await showAppConfirm("Bạn chắc chắn muốn xóa tour này?");
                 if (!ok) return;
                 await apiDeleteTour(id);
                 await load();

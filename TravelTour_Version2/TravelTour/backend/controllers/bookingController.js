@@ -361,6 +361,7 @@ export const confirmBooking = async (req, res) => {
       travelers,
       payment_method,
       final_price,
+      coupon_id,
     } = req.body;
 
     if (!tour_id || Number.isNaN(Number(tour_id))) {
@@ -578,8 +579,31 @@ export const confirmBooking = async (req, res) => {
 
     const totalPrice = unitPrice * billableGuests;
 
-    const finalPrice =
+    let finalPrice =
       Number(final_price) > 0 ? Number(final_price) : totalPrice;
+
+    let couponApplied = null;
+    if (coupon_id) {
+      try {
+        const [[coupon]] = await db.execute(
+          `SELECT id, user_id, provider_id, discount_percent, status
+           FROM customer_coupons WHERE id = ? LIMIT 1`,
+          [Number(coupon_id)],
+        );
+        if (
+          coupon &&
+          Number(coupon.user_id) === Number(user_id) &&
+          coupon.status === "active" &&
+          Number(coupon.provider_id) === Number(tour.provider_id)
+        ) {
+          const percent = Math.max(0, Math.min(100, Number(coupon.discount_percent || 0)));
+          finalPrice = Math.round(finalPrice * (1 - percent / 100));
+          couponApplied = { id: coupon.id, percent };
+        }
+      } catch (cErr) {
+        console.warn("apply coupon (precheck):", cErr.message);
+      }
+    }
 
     const discountAmount = Math.max(totalPrice - finalPrice, 0);
 
@@ -610,11 +634,26 @@ export const confirmBooking = async (req, res) => {
     await createBookingTravelers(bookingId, travelers);
     await updateBookedSlots(resolvedScheduleId, totalTravelers);
 
+    if (couponApplied?.id) {
+      try {
+        await db.execute(
+          `UPDATE customer_coupons
+             SET status = 'used', used_booking_id = ?, used_at = NOW()
+           WHERE id = ? AND user_id = ? AND status = 'active'`,
+          [bookingId, couponApplied.id, user_id],
+        );
+      } catch (uErr) {
+        console.warn("mark coupon used:", uErr.message);
+      }
+    }
+
     return res.status(201).json({
       success: true,
       message: "Tạo booking thành công",
       booking_id: bookingId,
       booking_code,
+      coupon_applied: couponApplied,
+      final_price: finalPrice,
     });
   } catch (error) {
     console.error("confirmBooking error:", error);
@@ -1054,7 +1093,7 @@ export const cancelBooking = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "Không thể hủy tour sau 24 giờ kể từ lúc đặt. Vui lòng liên hệ hỗ trợ nếu cần trợ giúp.",
+          "Không thể hủy tour: đã quá 24 giờ kể từ lúc đặt. Vui lòng liên hệ hỗ trợ nếu cần trợ giúp.",
       });
     }
 
@@ -1079,7 +1118,7 @@ export const cancelBooking = async (req, res) => {
     if (feePercent > 0) {
       message += ` Phí hủy dự kiến: ${feeAmount.toLocaleString("vi-VN")} VNĐ (${feePercent}% tổng giá trị tour).`;
     } else {
-      message += " Bạn không mất phí hủy (hủy trong vòng 60 phút).";
+      message += " Bạn không mất phí (hủy trong vòng 60 phút kể từ lúc đặt tour).";
     }
 
     return res.json({

@@ -68,6 +68,8 @@ export async function listProviders({ page = 1, pageSize = 7, q = "" } = {}) {
     SELECT
       p.id,
       p.company_name,
+      p.contract_file_url,
+      p.certificate_file_url,
       p.status,
       p.created_at,
       u.email AS account_email,
@@ -95,7 +97,9 @@ export async function listProviders({ page = 1, pageSize = 7, q = "" } = {}) {
       tours: toNumber(r.active_tours),
       status: status.label,
       statusKey: status.key,
-      rawStatus: r.status || ""
+      rawStatus: r.status || "",
+      contractFileUrl: r.contract_file_url || "",
+      certificateFileUrl: r.certificate_file_url || "",
     };
   });
 

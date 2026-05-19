@@ -64,6 +64,10 @@
   background: #f1f5f9;
 }
 
+.customer-noti[data-type="tour_cancelled_with_coupon"] {
+  cursor: pointer;
+}
+
 .customer-noti.is-unread {
   background: #ecfdf5;
   border-color: #bbf7d0;

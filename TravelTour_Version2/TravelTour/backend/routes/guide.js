@@ -15,7 +15,7 @@ import {
   getGuideAvailabilityController,
   saveGuideAvailabilityController,
   deleteGuideAvailabilityController,
-  getTourProviderInfoController,
+  getTourCustomersForGuideController,
 } from "../controllers/guideController.js";
 import {
   getGuideTourProgressController,
@@ -29,6 +29,7 @@ import {
 import {
   createGuideAbsenceController,
   listGuideOwnAbsenceController,
+  getGuideAbsenceYearlyStatsController,
 } from "../controllers/guideAbsenceController.js";
 import uploadAbsenceEvidence from "../middleware/uploadAbsenceEvidence.js";
 import {
@@ -85,12 +86,13 @@ router.post("/availability", saveGuideAvailabilityController);
 router.delete("/availability/:id", deleteGuideAvailabilityController);
 router.get("/schedules", getGuideSchedulesController);
 router.get("/current-tours", getCurrentToursController);
-router.get("/tours/:tourId/provider", getTourProviderInfoController);
+router.get("/tours/:tourId/customers", getTourCustomersForGuideController);
 router.post(
   "/absences",
   uploadAbsenceEvidence.single("evidence"),
   createGuideAbsenceController,
 );
+router.get("/absences/yearly-stats", getGuideAbsenceYearlyStatsController);
 router.get("/absences", listGuideOwnAbsenceController);
 router.get("/tours/:tourId/progress", getGuideTourProgressController);
 router.put("/tours/:tourId/progress", saveGuideTourProgressController);

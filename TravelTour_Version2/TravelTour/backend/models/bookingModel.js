@@ -67,6 +67,18 @@ export const createBooking = async (bookingData) => {
 };
 
 export const createBookingTravelers = async (bookingId, travelers) => {
+  // Đảm bảo cột phone tồn tại (idempotent — không ảnh hưởng nếu đã có)
+  try {
+    await db.query(
+      `ALTER TABLE booking_travelers ADD COLUMN phone VARCHAR(20) NULL AFTER id_number`,
+    );
+  } catch (err) {
+    if (err.code !== "ER_DUP_FIELDNAME") {
+      // Bỏ qua lỗi quyền/đang chạy, log nhẹ
+      console.warn("booking_travelers ADD phone:", err.message);
+    }
+  }
+
   const sql = `
     INSERT INTO booking_travelers (
       booking_id,
@@ -74,9 +86,10 @@ export const createBookingTravelers = async (bookingId, travelers) => {
       birth_date,
       gender,
       id_number,
+      phone,
       traveler_type
     )
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
 
   for (const traveler of travelers) {
@@ -86,6 +99,7 @@ export const createBookingTravelers = async (bookingId, travelers) => {
       traveler.birth_date,
       traveler.gender,
       traveler.id_number || null,
+      traveler.phone ? String(traveler.phone).slice(0, 20) : null,
       traveler.traveler_type,
     ]);
   }
@@ -273,6 +287,7 @@ export const getBookingSummaryData = async (tourId) => {
       t.final_price,
       t.thumbnail_url,
       t.max_capacity,
+      t.provider_id,
       COALESCE(bp.booked_participants, 0) AS booked_participants
     FROM tours t
     LEFT JOIN (

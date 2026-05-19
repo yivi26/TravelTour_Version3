@@ -6,6 +6,10 @@
     <title>TravelTour - Quản lý người dùng</title>
     <link rel="stylesheet" href="../../assets/css/admin/admin-base.css" />
     <link rel="stylesheet" href="../../assets/css/admin/qlinguoidung.css" />
+  
+    <link rel="stylesheet" href="/assets/css/common/app-toast.css" />
+    <script src="/assets/js/common/app-toast.js"></script>
+
   </head>
   <body>
     <div class="dashboard">
@@ -208,13 +212,13 @@
             <span class="partner-type-pill" id="partnerTypePill" aria-live="polite">Provider</span>
           </div>
           <div class="partner-field">
-            <label for="partnerFullName">Họ tên</label>
+            <label for="partnerFullName">Tên công ty đối tác</label>
             <input
               id="partnerFullName"
               name="full_name"
               type="text"
               autocomplete="name"
-              placeholder="Ví dụ: Nguyễn Văn A"
+              placeholder="Ví dụ: Công ty ABC"
               aria-describedby="err-partnerFullName"
             />
             <p class="partner-field-error" id="err-partnerFullName" hidden></p>
@@ -243,6 +247,58 @@
               aria-describedby="err-partnerPassword"
             />
             <p class="partner-field-error" id="err-partnerPassword" hidden></p>
+          </div>
+          <div id="partnerProviderDocs" hidden>
+            <div class="partner-field">
+              <label for="partnerProviderContract">Hợp đồng (PDF)</label>
+              <input
+                id="partnerProviderContract"
+                name="contract"
+                type="file"
+                accept=".pdf,application/pdf"
+                aria-describedby="err-partnerProviderContract"
+              />
+              <p class="partner-field-hint">Chấp nhận file .pdf</p>
+              <p class="partner-field-error" id="err-partnerProviderContract" hidden></p>
+            </div>
+            <div class="partner-field">
+              <label for="partnerProviderCertificate">Giấy chứng nhận (PDF)</label>
+              <input
+                id="partnerProviderCertificate"
+                name="certificate"
+                type="file"
+                accept=".pdf,application/pdf"
+                aria-describedby="err-partnerProviderCertificate"
+              />
+              <p class="partner-field-hint">Chấp nhận file .pdf</p>
+              <p class="partner-field-error" id="err-partnerProviderCertificate" hidden></p>
+            </div>
+          </div>
+          <div id="partnerGuideDocs" hidden>
+            <div class="partner-field">
+              <label for="partnerContract">Hợp đồng (Word)</label>
+              <input
+                id="partnerContract"
+                name="contract"
+                type="file"
+                accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                aria-describedby="err-partnerContract"
+              />
+              <p class="partner-field-hint">Chấp nhận file .doc hoặc .docx</p>
+              <p class="partner-field-error" id="err-partnerContract" hidden></p>
+            </div>
+            <div class="partner-field">
+              <label for="partnerCv">CV (PDF)</label>
+              <input
+                id="partnerCv"
+                name="cv"
+                type="file"
+                accept=".pdf,application/pdf"
+                aria-describedby="err-partnerCv"
+              />
+              <p class="partner-field-hint">Chấp nhận file .pdf</p>
+              <p class="partner-field-error" id="err-partnerCv" hidden></p>
+            </div>
           </div>
           <div class="partner-modal-actions">
             <button type="button" class="btn" id="partnerModalCancel">Hủy</button>
@@ -357,12 +413,27 @@
           return json?.data;
         }
 
-        async function createPartner(payload) {
-          const res = await fetch(`/api/admin/users/partner`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-          });
+        async function createPartner(payload, files = {}) {
+          const isGuide = payload.role === PARTNER_ROLE.GUIDE;
+          const isProvider = payload.role === PARTNER_ROLE.PROVIDER;
+          let res;
+          if (isGuide || isProvider) {
+            const fd = new FormData();
+            fd.append("full_name", payload.full_name);
+            fd.append("email", payload.email);
+            fd.append("password", payload.password);
+            fd.append("role", payload.role);
+            if (files.contract) fd.append("contract", files.contract);
+            if (files.cv) fd.append("cv", files.cv);
+            if (files.certificate) fd.append("certificate", files.certificate);
+            res = await fetch(`/api/admin/users/partner`, { method: "POST", body: fd });
+          } else {
+            res = await fetch(`/api/admin/users/partner`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+          }
           const json = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(json?.message || "Không tạo được tài khoản đối tác");
           return json?.data;
@@ -389,8 +460,12 @@
             String(role || "").toLowerCase() === PARTNER_ROLE.GUIDE ? PARTNER_ROLE.GUIDE : PARTNER_ROLE.PROVIDER;
           const hidden = getPartnerRoleInput();
           const pill = document.getElementById("partnerTypePill");
+          const guideDocs = document.getElementById("partnerGuideDocs");
+          const providerDocs = document.getElementById("partnerProviderDocs");
           if (hidden) hidden.value = normalized;
           if (pill) pill.textContent = PARTNER_TYPE_PILL_TEXT[normalized] || "Provider";
+          if (guideDocs) guideDocs.hidden = normalized !== PARTNER_ROLE.GUIDE;
+          if (providerDocs) providerDocs.hidden = normalized !== PARTNER_ROLE.PROVIDER;
         }
 
         function clearPartnerFieldErrors() {
@@ -441,6 +516,82 @@
 
           if (!password || password.length < 4) {
             return fail("partnerPassword", "err-partnerPassword", "Mật khẩu tối thiểu 4 ký tự");
+          }
+
+          if (role === PARTNER_ROLE.GUIDE) {
+            const contractInput = document.getElementById("partnerContract");
+            const cvInput = document.getElementById("partnerCv");
+            const contractFile = contractInput?.files?.[0];
+            const cvFile = cvInput?.files?.[0];
+            if (!contractFile) {
+              return fail("partnerContract", "err-partnerContract", "Vui lòng tải lên hợp đồng (Word)");
+            }
+            if (!cvFile) {
+              return fail("partnerCv", "err-partnerCv", "Vui lòng tải lên CV (PDF)");
+            }
+            const contractName = String(contractFile.name || "").toLowerCase();
+            if (!contractName.endsWith(".doc") && !contractName.endsWith(".docx")) {
+              return fail(
+                "partnerContract",
+                "err-partnerContract",
+                "Hợp đồng phải là file Word (.doc hoặc .docx)",
+              );
+            }
+            const cvName = String(cvFile.name || "").toLowerCase();
+            if (!cvName.endsWith(".pdf")) {
+              return fail("partnerCv", "err-partnerCv", "CV phải là file PDF (.pdf)");
+            }
+            return {
+              full_name,
+              email: low,
+              password,
+              role,
+              files: { contract: contractFile, cv: cvFile },
+            };
+          }
+
+          if (role === PARTNER_ROLE.PROVIDER) {
+            const contractInput = document.getElementById("partnerProviderContract");
+            const certInput = document.getElementById("partnerProviderCertificate");
+            const contractFile = contractInput?.files?.[0];
+            const certificateFile = certInput?.files?.[0];
+            if (!contractFile) {
+              return fail(
+                "partnerProviderContract",
+                "err-partnerProviderContract",
+                "Vui lòng tải lên hợp đồng (PDF)",
+              );
+            }
+            if (!certificateFile) {
+              return fail(
+                "partnerProviderCertificate",
+                "err-partnerProviderCertificate",
+                "Vui lòng tải lên giấy chứng nhận (PDF)",
+              );
+            }
+            const contractName = String(contractFile.name || "").toLowerCase();
+            const certName = String(certificateFile.name || "").toLowerCase();
+            if (!contractName.endsWith(".pdf")) {
+              return fail(
+                "partnerProviderContract",
+                "err-partnerProviderContract",
+                "Hợp đồng phải là file PDF (.pdf)",
+              );
+            }
+            if (!certName.endsWith(".pdf")) {
+              return fail(
+                "partnerProviderCertificate",
+                "err-partnerProviderCertificate",
+                "Giấy chứng nhận phải là file PDF (.pdf)",
+              );
+            }
+            return {
+              full_name,
+              email: low,
+              password,
+              role,
+              files: { contract: contractFile, certificate: certificateFile },
+            };
           }
 
           return { full_name, email: low, password, role };
@@ -669,10 +820,11 @@
           if (partnerForm) {
             partnerForm.addEventListener("submit", async (e) => {
               e.preventDefault();
-              const payload = validatePartnerFormBeforeSubmit();
-              if (!payload) return;
+              const validated = validatePartnerFormBeforeSubmit();
+              if (!validated) return;
+              const { files, ...payload } = validated;
               try {
-                await createPartner(payload);
+                await createPartner(payload, files || {});
                 closePartnerModal();
                 await loadAndRender();
                 alert("Đã tạo tài khoản đối tác.");

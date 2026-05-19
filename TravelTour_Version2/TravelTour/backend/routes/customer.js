@@ -17,6 +17,11 @@ import {
   getCustomerNotificationsController,
   markCustomerNotificationsReadController,
 } from "../controllers/customerNotificationsController.js";
+import {
+  listCustomerCouponsController,
+  claimCustomerCouponController,
+  getBestActiveCouponForTourController,
+} from "../controllers/customerCouponsController.js";
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -32,6 +37,10 @@ router.put("/change-password", changePassword);
 
 router.get("/notifications", getCustomerNotificationsController);
 router.patch("/notifications/read", markCustomerNotificationsReadController);
+
+router.get("/coupons", listCustomerCouponsController);
+router.post("/coupons/:id/claim", claimCustomerCouponController);
+router.get("/coupons/best/tour/:tourId", getBestActiveCouponForTourController);
 
 router.post("/avatar", uploadAvatar.single("avatar"), updateCustomerAvatar);
 router.delete("/avatar", deleteCustomerAvatar);

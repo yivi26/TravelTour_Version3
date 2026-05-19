@@ -208,8 +208,8 @@ document.addEventListener("DOMContentLoaded", () => {
       await submitTour("draft");
     });
 
-    cancelCreateTourBtn?.addEventListener("click", () => {
-      const isConfirmed = confirm("Bạn có chắc muốn hủy?");
+    cancelCreateTourBtn?.addEventListener("click", async () => {
+      const isConfirmed = await showAppConfirm("Bạn có chắc muốn hủy?");
       if (!isConfirmed) return;
       window.location.href = "./tour_management.html";
     });
@@ -251,10 +251,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (cancelPolicyInput.value.trim() !== "") {
         cancelPolicyInput.value = "";
       } else {
-        cancelPolicyInput.value = `- Hủy trước 7 ngày: hoàn 100% giá tour
-- Hủy trước 3 - 6 ngày: hoàn 50% giá tour
-- Hủy trước 1 - 2 ngày: hoàn 30% giá tour
-- Hủy trong ngày khởi hành: không hoàn phí`;
+        cancelPolicyInput.value = `Quy định hủy tour:
+- Hủy trong vòng 60 phút kể từ lúc đặt tour thì không mất phí.
+- Hủy từ sau 60 phút đến 24 giờ kể từ lúc đặt thì mất 15% trên tổng giá trị của tour.
+- Từ sau 24 giờ kể từ lúc đặt tour thì không hủy được.`;
       }
 
       updateFormProgress();
@@ -1368,7 +1368,7 @@ if (status === "active" && savedTourId) {
       .filter(Boolean)
       .join(", ");
 
-    const ok = confirm(
+    const ok = await showAppConfirm(
       `File Excel có ảnh (${names}) nhưng chưa tìm thấy trên server hoặc nhúng trong file.\n\n` +
         "Chọn các file ảnh từ máy (thường cùng thư mục với file Excel) để gắn vào tour?"
     );

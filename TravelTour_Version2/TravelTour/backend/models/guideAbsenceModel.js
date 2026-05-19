@@ -3,9 +3,27 @@ import {
   assignGuideToTour,
   unassignGuideFromTour,
 } from "./providerModel.js";
-import { createGuideTourAssignedNotification } from "./guideNotificationsModel.js";
-import { notifyTourCustomers } from "./customerNotificationsModel.js";
+import {
+  createGuideTourAssignedNotification,
+  createGuideAbsenceOutcomeNotification,
+} from "./guideNotificationsModel.js";
+import {
+  assertGuideCanReportOrReceiveAbsence,
+  recordAbsencePenalty,
+  getGuideAbsenceYearlyStats,
+} from "./guideAbsencePolicy.js";
+
+export { getGuideAbsenceYearlyStats };
+import {
+  notifyTourCustomers,
+  createCustomerNotification,
+} from "./customerNotificationsModel.js";
+import { createCompensationCoupon } from "./customerCouponsModel.js";
 import { logTourGuideHistory } from "./tourGuideHistoryModel.js";
+import {
+  computeAbsenceUrgency,
+  ABSENCE_URGENCY_ORDER_SQL,
+} from "../utils/absenceUrgency.js";
 
 let tableReady = false;
 
@@ -35,15 +53,25 @@ export async function ensureGuideAbsenceTable() {
   tableReady = true;
 }
 
-/** Tính urgency theo khoảng cách tới ngày khởi hành. */
-function computeUrgency(startDate) {
-  if (!startDate) return "medium";
-  const start = new Date(startDate);
-  if (Number.isNaN(start.getTime())) return "medium";
-  const diffHours = (start.getTime() - Date.now()) / (1000 * 60 * 60);
-  if (diffHours <= 48) return "urgent";
-  if (diffHours <= 7 * 24) return "medium";
-  return "low";
+/** Đồng bộ urgency DB cho yêu cầu pending khi tour đổi ngày khởi hành. */
+export async function refreshPendingAbsenceUrgencyForTour(tourId) {
+  const tid = Number(tourId);
+  if (!tid) return;
+  await ensureGuideAbsenceTable();
+  const [[tour]] = await db.query(
+    `SELECT start_date FROM tours WHERE id = ? LIMIT 1`,
+    [tid],
+  );
+  if (!tour) return;
+  const urgency = computeAbsenceUrgency(tour.start_date);
+  await db.query(
+    `
+    UPDATE guide_absence_requests
+    SET urgency = ?
+    WHERE tour_id = ? AND status = 'pending'
+    `,
+    [urgency, tid],
+  );
 }
 
 export async function createGuideAbsenceRequest({
@@ -61,6 +89,8 @@ export async function createGuideAbsenceRequest({
   if (trimmedReason.length < 10) {
     throw new Error("Vui lòng mô tả lý do ít nhất 10 ký tự");
   }
+
+  await assertGuideCanReportOrReceiveAbsence(gid);
 
   await ensureGuideAbsenceTable();
 
@@ -94,7 +124,7 @@ export async function createGuideAbsenceRequest({
     throw new Error("Đã có yêu cầu báo bận đang chờ xử lý cho tour này");
   }
 
-  const urgency = computeUrgency(tourRow.start_date);
+  const urgency = "urgent";
 
   const [result] = await db.query(
     `
@@ -150,6 +180,11 @@ const BASE_SELECT = `
 `;
 
 function mapRow(row) {
+  const urgency =
+    row.status === "pending" && row.tour_start_date
+      ? computeAbsenceUrgency(row.tour_start_date)
+      : row.urgency;
+
   return {
     id: row.id,
     guideId: row.guide_id,
@@ -157,7 +192,7 @@ function mapRow(row) {
     providerId: row.provider_id,
     reason: row.reason,
     evidenceUrl: row.evidence_url,
-    urgency: row.urgency,
+    urgency,
     status: row.status,
     requestedAt: row.requested_at,
     resolvedAt: row.resolved_at,
@@ -214,7 +249,8 @@ export async function listGuideAbsenceRequestsForProvider(
      ${where}
      ORDER BY
        CASE r.status WHEN 'pending' THEN 0 ELSE 1 END,
-       FIELD(r.urgency, 'urgent', 'medium', 'low'),
+       ${ABSENCE_URGENCY_ORDER_SQL},
+       t.start_date ASC,
        r.requested_at DESC,
        r.id DESC
      LIMIT ?`,
@@ -278,7 +314,18 @@ export async function approveGuideAbsenceAndReassign(
   try {
     await createGuideTourAssignedNotification(repId, request.tourId, providerId);
   } catch (err) {
-    console.error("approveGuideAbsence notification:", err);
+    console.error("approveGuideAbsence assign notification:", err);
+  }
+
+  try {
+    await createGuideAbsenceOutcomeNotification(
+      request.guideId,
+      request.tourId,
+      providerId,
+      "approved_replacement",
+    );
+  } catch (err) {
+    console.error("approveGuideAbsence outcome notification:", err);
   }
 
   return await getRequest(providerId, requestId);
@@ -294,7 +341,7 @@ export async function approveGuideAbsenceAndReassign(
 export async function cancelTourForAbsence(
   providerId,
   requestId,
-  { note, resolvedByUserId },
+  { note, resolvedByUserId, customerDiscountPercent = 0 },
 ) {
   await ensureGuideAbsenceTable();
   const request = await getRequest(providerId, requestId);
@@ -305,8 +352,19 @@ export async function cancelTourForAbsence(
 
   const tourId = Number(request.tourId);
   const tourTitle = request.tour?.title || "Tour";
+  const discountPercent = Math.max(0, Math.min(100, Number(customerDiscountPercent) || 0));
 
   const reason = String(note || "Nhà cung cấp huỷ tour do không có HDV thay thế").trim();
+
+  const [activeBookings] = await db.query(
+    `
+    SELECT id, user_id
+    FROM bookings
+    WHERE tour_id = ?
+      AND status IN ('pending', 'pending_payment', 'confirmed', 'paid', 'in_progress')
+    `,
+    [tourId],
+  );
 
   await db.query(
     `
@@ -361,14 +419,61 @@ export async function cancelTourForAbsence(
     console.warn("logTourGuideHistory cancel:", h.message);
   }
 
+  const notifyTitle = "Tour của bạn đã bị huỷ";
+  const notifyBody =
+    "Tour của bạn đã được hủy bởi hệ thống vì một sự cố đột xuất. Chúng tôi chân thành xin lỗi bạn vì sự bất tiện này, chúng tôi sẽ hoàn lại đúng số tiền và gửi tặng bạn 1 mã giảm giá vô thời hạn áp dụng cho tất cả các tour của chúng tôi.";
+
+  for (const booking of activeBookings) {
+    let couponId = null;
+    if (discountPercent > 0) {
+      try {
+        const coupon = await createCompensationCoupon({
+          userId: booking.user_id,
+          providerId,
+          discountPercent,
+          absenceRequestId: request.id,
+          bookingId: booking.id,
+        });
+        couponId = coupon?.id || null;
+      } catch (couponErr) {
+        console.warn("createCompensationCoupon:", couponErr.message);
+      }
+    }
+
+    try {
+      await createCustomerNotification({
+        userId: booking.user_id,
+        bookingId: booking.id,
+        tourId,
+        type: "tour_cancelled_with_coupon",
+        title: notifyTitle,
+        body: notifyBody,
+        couponId,
+      });
+    } catch (nErr) {
+      console.warn("notify cancel customer:", nErr.message);
+    }
+  }
+
   try {
-    await notifyTourCustomers(tourId, {
-      type: "tour_cancelled_no_guide",
-      title: `Tour "${tourTitle}" đã bị huỷ`,
-      body: `Rất tiếc, tour "${tourTitle}" đã bị nhà cung cấp huỷ vì không thể bố trí hướng dẫn viên thay thế. Bạn sẽ được hoàn tiền theo chính sách. Liên hệ nhà cung cấp tour để biết chi tiết.`,
-    });
+    await createGuideAbsenceOutcomeNotification(
+      request.guideId,
+      tourId,
+      providerId,
+      "no_replacement",
+    );
   } catch (nErr) {
-    console.warn("notify cancel customers:", nErr.message);
+    console.warn("notify guide absence no replacement:", nErr.message);
+  }
+
+  try {
+    await recordAbsencePenalty({
+      guideId: request.guideId,
+      absenceRequestId: request.id,
+      tourId,
+    });
+  } catch (penErr) {
+    console.warn("recordAbsencePenalty:", penErr.message);
   }
 
   return await getRequest(providerId, requestId);

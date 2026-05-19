@@ -1,5 +1,4 @@
 import {
-  createPartnerUser,
   getUserStats,
   listUsers,
   setUserActive
@@ -47,23 +46,6 @@ export async function patchAdminUserActiveController(req, res) {
     const status = Number(err?.statusCode || 500);
     return res.status(status).json({
       message: err.message || "Lỗi cập nhật trạng thái người dùng",
-      error: err.sqlMessage || err.message
-    });
-  }
-}
-
-export async function postAdminPartnerUserController(req, res) {
-  try {
-    const created = await createPartnerUser(req.body || {});
-    return res.status(201).json({
-      message: "Tạo tài khoản đối tác thành công",
-      data: created
-    });
-  } catch (err) {
-    console.error("❌ ADMIN CREATE PARTNER USER ERROR:", err);
-    const status = Number(err?.statusCode || 500);
-    return res.status(status).json({
-      message: err.message || "Lỗi tạo tài khoản đối tác",
       error: err.sqlMessage || err.message
     });
   }

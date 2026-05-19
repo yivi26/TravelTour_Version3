@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
@@ -6,6 +6,10 @@
     <title>Chi tiết tour - TravelTour</title>
 
     <link rel="stylesheet" href="../../assets/css/navbar.css" />
+    <link
+      rel="stylesheet"
+      href="../../assets/css/customer/customer-navbar-notifications.css"
+    />
     <link rel="stylesheet" href="../../assets/css/tours/chitiet.css" />
     <link rel="stylesheet" href="../../assets/css/tour-price-display.css" />
     <link
@@ -113,6 +117,10 @@
         z-index: 800;
       }
     </style>
+  
+    <link rel="stylesheet" href="/assets/css/common/app-toast.css" />
+    <script src="/assets/js/common/app-toast.js"></script>
+
   </head>
   <body class="tour-detail-page has-public-navbar">
     <nav class="navbar">
@@ -280,6 +288,17 @@
 
           <section class="section-card" id="tour-reviews-section">
             <h2>Đánh giá từ khách hàng</h2>
+
+            <div class="reviews-tabs" id="reviews-tabs" role="tablist" aria-label="Loại đánh giá">
+              <button type="button" class="reviews-tab is-active" role="tab" id="reviews-tab-tour-btn" data-reviews-tab="tour" aria-selected="true" aria-controls="reviews-panel-tour">
+                Đánh giá tour
+              </button>
+              <button type="button" class="reviews-tab" role="tab" id="reviews-tab-guide-btn" data-reviews-tab="guide" aria-selected="false" aria-controls="reviews-panel-guide" tabindex="-1">
+                Hướng dẫn viên
+              </button>
+            </div>
+
+            <div id="reviews-panel-tour" class="reviews-tab-panel" role="tabpanel" aria-labelledby="reviews-tab-tour-btn">
             <div id="reviews-summary-root" class="reviews-summary-wrap"></div>
             <p id="reviews-viewer-hint" class="reviews-viewer-hint" hidden></p>
             <div id="reviews-compose" class="reviews-compose" style="display: none">
@@ -312,6 +331,19 @@
               <p id="reviews-compose-msg" class="reviews-compose-msg" role="status"></p>
             </div>
             <div id="reviews-list" class="reviews-list"></div>
+            <button type="button" class="reviews-view-all-btn" id="reviews-view-all-tour" hidden>
+              Xem tất cả đánh giá tour
+            </button>
+            </div>
+
+            <div id="reviews-panel-guide" class="reviews-tab-panel" role="tabpanel" aria-labelledby="reviews-tab-guide-btn" hidden>
+              <div id="guide-reviews-public-profile" class="guide-reviews-public-profile" hidden></div>
+              <div id="guide-reviews-summary-root" class="reviews-summary-wrap"></div>
+              <div id="guide-reviews-public-list" class="reviews-list"></div>
+              <button type="button" class="reviews-view-all-btn" id="reviews-view-all-guide" hidden>
+                Xem tất cả đánh giá HDV
+              </button>
+            </div>
           </section>
 
           <section class="section-card guide-review-section" id="guide-reviews-section" hidden>
@@ -481,9 +513,26 @@
         </div>
       </div>
     </main>
+    <div id="reviews-modal" class="reviews-modal" hidden aria-hidden="true">
+      <div class="reviews-modal__backdrop" data-reviews-modal-close></div>
+      <div class="reviews-modal__panel" role="dialog" aria-modal="true" aria-labelledby="reviews-modal-title">
+        <header class="reviews-modal__header">
+          <h2 id="reviews-modal-title" class="reviews-modal__title">Đánh giá</h2>
+          <button type="button" class="reviews-modal__close" data-reviews-modal-close aria-label="Đóng">&times;</button>
+        </header>
+        <div class="reviews-modal__body">
+          <div id="reviews-modal-summary" class="reviews-summary-wrap reviews-modal__summary"></div>
+          <div id="reviews-modal-list" class="reviews-list"></div>
+          <nav id="reviews-modal-pagination" class="reviews-pagination" aria-label="Phân trang đánh giá"></nav>
+        </div>
+      </div>
+    </div>
+
+
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="../../assets/js/auth/navbar-avatar.js"></script>
+    <script src="../../assets/js/customer/customer-notifications.js"></script>
     <script src="../../assets/js/auth/public-navbar-auth.js"></script>
     <script src="../../assets/js/caidat.js"></script>
     <script src="../../assets/js/tours/tourPriceDisplay.js"></script>

@@ -1,3 +1,5 @@
+> **Tài liệu đầy đủ:** xem [`bao-ban-khan-cap-hdv.md`](./bao-ban-khan-cap-hdv.md) (luồng, urgency, API, ràng buộc, hoa hồng).
+
 ┌──────────┐                                          
 │ HDV gặp │                                          
 │ sự cố   │                                          
@@ -61,3 +63,11 @@ DUYỆT         TỪ CHỐI            HUỶ TOUR
 3. HDV thay thế phải: cùng provider, không trùng lịch tour khác, đủ ngày rảnh — tái dùng assertGuideHasFullAvailabilityForTour và assertGuideTourScheduleNoConflict.
 4. Cancel-tour chỉ áp dụng cho booking có status: pending / pending_payment / confirmed / paid / in_progress. Các booking đã cancelled / refunded / completed không bị tác động.
 5. Audit: mỗi lần đổi HDV đều có 1 row tour_guide_history với previous_guide_id / guide_id / reason / by_user_id.
+
+---
+
+## Quy định hủy tour (khách — booking)
+
+- Hủy trong vòng **60 phút** kể từ lúc đặt tour: **không mất phí**.
+- Hủy từ sau **60 phút** đến **24 giờ** kể từ lúc đặt: mất **15%** trên tổng giá trị của tour.
+- Từ sau **24 giờ** kể từ lúc đặt tour: **không hủy được** (logic: `bookingController` + `history.js` / trang chi tiết tour dùng mặc định nếu NCC không nhập `cancel_policy`).
